@@ -24,7 +24,7 @@ static File_Changed_Info *_file_watcher_file_changed_info_new(char *path,
 	guint f_hash, gboolean deleted)
 {
 	File_Changed_Info *info = g_malloc(sizeof(File_Changed_Info));
-	info->path = path;
+	info->path = g_strdup(path);
 	info->deleted = deleted;
 	info->f_hash = f_hash;
 	return info;
@@ -156,6 +156,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	}
 
 	_timeout_id = g_timeout_add(EXPIRE_TIME, _file_watcher_save_timeout, NULL);
+	g_free(path);
 	(void) other;
 	(void) monitor;
 	(void) data;
