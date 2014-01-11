@@ -70,15 +70,18 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 
 	path = g_file_get_path(file);
 	g_return_if_fail(path);
+
+	if (g_str_has_prefix(path, file_keeper_db_path_get(_keeper))) {
+		g_free(path);
+		return;
+	}
+
 	type = g_file_query_file_type(file, G_FILE_QUERY_INFO_NONE, NULL);
 	if (event == G_FILE_MONITOR_EVENT_DELETED) {
 		g_hash_table_remove(_file_monitors, path);
 		deleting = TRUE;
-	} else if (event == G_FILE_MONITOR_EVENT_CREATED) {
-		if (type == G_FILE_TYPE_DIRECTORY)
+	} else if (event == G_FILE_MONITOR_EVENT_CREATED)
 			file_watcher_add_watches(path);
-	}
-	printf("%s %d\n", path, deleting);
 	/* We cannot track directories, only the files in it. */
 	if (type != G_FILE_TYPE_DIRECTORY)
 		file_keeper_save_changes(_keeper, file, deleting);
@@ -88,12 +91,17 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	(void) data;
 }
 
-static void _file_watcher_monitor_add(GFile *file)
+static void _file_watcher_monitor_add(GFile *file, gboolean is_dir)
 {
 	char *path;
 	GFileMonitor *monitor;
 
-	monitor = g_file_monitor_directory(file, G_FILE_MONITOR_NONE, NULL, NULL);
+	if (is_dir) {
+		monitor = g_file_monitor_directory(file, G_FILE_MONITOR_NONE, NULL,
+			NULL);
+	} else {
+		monitor = g_file_monitor_file(file, G_FILE_MONITOR_NONE, NULL, NULL);
+	}
 
 	if (!monitor)
 		return;
@@ -120,6 +128,9 @@ void file_watcher_add_watches(const char *base_path)
 	GFileEnumerator *f_enum;
 	GFileType type;
 
+	if (g_str_has_prefix(base_path, file_keeper_db_path_get(_keeper)))
+		return;
+
 	file = g_file_new_for_path(base_path);
 	g_snprintf(attr, sizeof(attr), "%s,%s", G_FILE_ATTRIBUTE_STANDARD_NAME,
 		G_FILE_ATTRIBUTE_STANDARD_TYPE);
@@ -129,21 +140,22 @@ void file_watcher_add_watches(const char *base_path)
 	type = g_file_info_get_file_type(info);
 	name = g_file_info_get_name(info);
 	g_object_unref(info);
-	if (type == G_FILE_TYPE_DIRECTORY &&
-		strcmp(name, file_keeper_db_path_get(_keeper))) {
-		_file_watcher_monitor_add(file);
+	if (type == G_FILE_TYPE_DIRECTORY) {
+		_file_watcher_monitor_add(file, TRUE);
 		f_enum = g_file_enumerate_children(file, attr, G_FILE_QUERY_INFO_NONE,
 			NULL, NULL);
 		if (!f_enum)
 			goto exit;
 		while((info = g_file_enumerator_next_file(f_enum, NULL, NULL))) {
-			g_snprintf(path, sizeof(path), "%s%s", base_path,
-				g_file_info_get_name(info));
+			g_snprintf(path, sizeof(path), "%s%c%s", base_path,
+				G_DIR_SEPARATOR, g_file_info_get_name(info));
 			file_watcher_add_watches(path);
 			g_object_unref(info);
 		}
 		g_object_unref(f_enum);
-	}
+	} else if (type == G_FILE_TYPE_REGULAR || type == G_FILE_TYPE_SHORTCUT ||
+		type == G_FILE_TYPE_SYMBOLIC_LINK)
+		_file_watcher_monitor_add(file, FALSE);
 exit:
 	g_object_unref(file);
 }
