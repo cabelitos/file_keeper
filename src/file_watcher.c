@@ -149,7 +149,8 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 		g_source_remove(_timeout_id);
 
 	f_hash = g_file_hash(file);
-	if (!_file_watcher_file_changed_info_already_marked(f_hash)) {
+	if (file_keeper_file_content_has_changed(_keeper, path) &&
+		!_file_watcher_file_changed_info_already_marked(f_hash)) {
 		_changed_files = g_slist_prepend(_changed_files,
 			_file_watcher_file_changed_info_new(path, f_hash, deleting));
 	}
@@ -181,7 +182,6 @@ static void _file_watcher_monitor_add(GFile *file, gboolean is_dir)
 		g_object_unref(monitor);
 		return;
 	}
-
 	g_hash_table_insert(_file_monitors, path, monitor);
 	g_signal_connect(monitor, "changed",
 		G_CALLBACK(_file_watcher_monitor_changed), NULL);

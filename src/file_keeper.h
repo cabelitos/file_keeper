@@ -16,4 +16,6 @@ gboolean file_keeper_save_changes(File_Keeper *keeper, const char *path, gboolea
 
 const char *file_keeper_db_path_get(File_Keeper *keeper);
 
+gboolean file_keeper_file_content_has_changed(File_Keeper *keeper, const char *path);
+
 #endif
