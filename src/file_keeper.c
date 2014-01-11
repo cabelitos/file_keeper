@@ -1,6 +1,7 @@
 #include <git2.h>
 #include <stdio.h>
 #include <string.h>
+#include <glib/gstdio.h>
 #include "file_keeper.h"
 #include "utils.h"
 
@@ -27,6 +28,19 @@ static char * _file_keeper_get_relative_path(const char *base, const char *file)
 	file += start;
 	r = g_malloc(r_size);
 	memcpy(r, file, r_size);
+	return r;
+}
+
+static char * _file_keeper_get_file_name(const char *path)
+{
+	size_t size = strlen(path), i;
+	char *r;
+	i = size;
+	while(path[i-1] != G_DIR_SEPARATOR)
+		i--;
+	path += i;
+	r = g_malloc((size - i) + 1);
+	memcpy(r, path, (size - i) + 1);
 	return r;
 }
 
@@ -116,28 +130,21 @@ static gboolean _file_keeper_create_hard_link(const char *p1, const char *p2)
 #endif
 }
 
-gboolean file_keeper_save_changes(File_Keeper *keeper, GFile *file,
+gboolean file_keeper_save_changes(File_Keeper *keeper, const char *path,
 	gboolean deleting)
 {
 	gboolean r = FALSE;
-	GFileInfo *info;
-	const char *name;
-	char *file_path = NULL, *rel_path;
+	char *rel_path, *name;
 	gboolean exist;
 	char file_db_path[FILE_KEEPER_PATH_MAX];
 	char final_path[FILE_KEEPER_PATH_MAX];
 	char commit_msg[50];
 	git_repository *repo = NULL;
 
-	g_return_val_if_fail(file, FALSE);
+	g_return_val_if_fail(path, FALSE);
 	g_return_val_if_fail(keeper, FALSE);
 
-	info = g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_NAME,
-		G_FILE_QUERY_INFO_NONE, NULL, NULL);
-	if (!info)
-		return r;
-
-	name = g_file_info_get_name(info);
+	name = _file_keeper_get_file_name(path);
 	g_snprintf(file_db_path, sizeof(file_db_path), "%s%c%s-changes", keeper->path,
 		G_DIR_SEPARATOR, name);
 
@@ -147,16 +154,21 @@ gboolean file_keeper_save_changes(File_Keeper *keeper, GFile *file,
 	g_snprintf(final_path, sizeof(final_path), "%s%c%s", file_db_path,
 		G_DIR_SEPARATOR, name);
 
+	if (deleting) {
+		if (g_remove(final_path) < 0) {
+			goto exit;
+		}
+	}
+
 	if (!exist) {
-		file_path = g_file_get_path(file);
-		if (!_file_keeper_create_hard_link(file_path, final_path))
-			goto exit_free_path;
+		if (!_file_keeper_create_hard_link(path, final_path))
+			goto exit;
 			if (git_repository_init(&repo, file_db_path, 0) < 0)
-				goto exit_free_path;
+				goto exit;
 			g_snprintf(commit_msg, sizeof(commit_msg), "Initing");
 	} else {
 		if (git_repository_open(&repo, file_db_path) < 0)
-			goto exit_free_path;
+			goto exit;
 		g_snprintf(commit_msg, sizeof(commit_msg), "Changing");
 	}
 
@@ -165,10 +177,8 @@ gboolean file_keeper_save_changes(File_Keeper *keeper, GFile *file,
 	git_repository_free(repo);
 	g_free(rel_path);
 
-exit_free_path:
-	g_free(file_path);
 exit:
-	g_object_unref(info);
+	g_free(name);
 	return r;
 }
 

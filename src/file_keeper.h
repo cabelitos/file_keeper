@@ -12,7 +12,7 @@ File_Keeper *file_keeper_new(const char *base_path);
 
 void file_keeper_free(File_Keeper *keeper);
 
-gboolean file_keeper_save_changes(File_Keeper *keeper, GFile *file, gboolean deleting);
+gboolean file_keeper_save_changes(File_Keeper *keeper, const char *path, gboolean deleting);
 
 const char *file_keeper_db_path_get(File_Keeper *keeper);
 

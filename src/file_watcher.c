@@ -84,7 +84,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 			file_watcher_add_watches(path);
 	/* We cannot track directories, only the files in it. */
 	if (type != G_FILE_TYPE_DIRECTORY)
-		file_keeper_save_changes(_keeper, file, deleting);
+		file_keeper_save_changes(_keeper, path, deleting);
 	g_free(path);
 	(void) other;
 	(void) monitor;
