@@ -38,11 +38,6 @@ static void _file_watcher_free_changed_info_and_commit(gpointer data)
 	g_free(info);
 }
 
-static void _file_watcher_key_destroy(gpointer data)
-{
-	g_free(data);
-}
-
 static void _file_watcher_value_destroy(gpointer data)
 {
 	g_object_unref(data);
@@ -63,8 +58,8 @@ void file_watcher_init(void)
 	_keeper = file_keeper_new(path);
 	g_return_if_fail(_keeper);
 
-	_file_monitors = g_hash_table_new_full(g_str_hash, g_str_equal,
-		_file_watcher_key_destroy, _file_watcher_value_destroy);
+	_file_monitors = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+		NULL, _file_watcher_value_destroy);
 	file_watcher_add_watches(path);
 }
 
@@ -127,6 +122,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 
 	path = g_file_get_path(file);
 	g_return_if_fail(path);
+	f_hash = g_file_hash(file);
 
 	if (g_str_has_prefix(path, file_keeper_db_path_get(_keeper))) {
 		g_free(path);
@@ -135,7 +131,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 
 	type = g_file_query_file_type(file, G_FILE_QUERY_INFO_NONE, NULL);
 	if (event == G_FILE_MONITOR_EVENT_DELETED) {
-		g_hash_table_remove(_file_monitors, path);
+		g_hash_table_remove(_file_monitors, GINT_TO_POINTER(f_hash));
 		deleting = TRUE;
 	} else if (event == G_FILE_MONITOR_EVENT_CREATED)
 			file_watcher_add_watches(path);
@@ -148,7 +144,6 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	if (_timeout_id)
 		g_source_remove(_timeout_id);
 
-	f_hash = g_file_hash(file);
 	if (file_keeper_file_content_has_changed(_keeper, path) &&
 		!_file_watcher_file_changed_info_already_marked(f_hash)) {
 		_changed_files = g_slist_prepend(_changed_files,
@@ -164,7 +159,6 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 
 static void _file_watcher_monitor_add(GFile *file, gboolean is_dir)
 {
-	char *path;
 	GFileMonitor *monitor;
 
 	if (is_dir) {
@@ -176,14 +170,8 @@ static void _file_watcher_monitor_add(GFile *file, gboolean is_dir)
 
 	if (!monitor)
 		return;
-
-	path = g_file_get_path(file);
-
-	if (!path) {
-		g_object_unref(monitor);
-		return;
-	}
-	g_hash_table_insert(_file_monitors, path, monitor);
+	g_hash_table_insert(_file_monitors, GINT_TO_POINTER(g_file_hash(file)),
+		monitor);
 	g_signal_connect(monitor, "changed",
 		G_CALLBACK(_file_watcher_monitor_changed), NULL);
 }
