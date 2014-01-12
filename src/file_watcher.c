@@ -20,6 +20,8 @@ typedef struct _File_Changed_Info {
 	gboolean deleted;
 } File_Changed_Info;
 
+static void file_watcher_add_watches(const char *base_path, gboolean commit_changes);
+
 static File_Changed_Info *_file_watcher_file_changed_info_new(char *path,
 	guint f_hash, gboolean deleted)
 {
@@ -60,7 +62,8 @@ void file_watcher_init(void)
 
 	_file_monitors = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 		NULL, _file_watcher_value_destroy);
-	file_watcher_add_watches(path);
+	file_watcher_add_watches(path, TRUE);
+	file_keeper_commit_deleted_files(_keeper);
 }
 
 void file_watcher_shutdown(void)
@@ -134,7 +137,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 		g_hash_table_remove(_file_monitors, GINT_TO_POINTER(f_hash));
 		deleting = TRUE;
 	} else if (event == G_FILE_MONITOR_EVENT_CREATED)
-			file_watcher_add_watches(path);
+			file_watcher_add_watches(path, FALSE);
 
 	/* We cannot track directories, only the files in it. */
 	if (type == G_FILE_TYPE_DIRECTORY) {
@@ -144,8 +147,8 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	if (_timeout_id)
 		g_source_remove(_timeout_id);
 
-	if (file_keeper_file_content_has_changed(_keeper, path) &&
-		!_file_watcher_file_changed_info_already_marked(f_hash)) {
+	if (((!deleting && file_keeper_file_content_has_changed(_keeper, path)) ||
+		deleting) && !_file_watcher_file_changed_info_already_marked(f_hash)) {
 		_changed_files = g_slist_prepend(_changed_files,
 			_file_watcher_file_changed_info_new(path, f_hash, deleting));
 	}
@@ -176,11 +179,13 @@ static void _file_watcher_monitor_add(GFile *file, gboolean is_dir)
 		G_CALLBACK(_file_watcher_monitor_changed), NULL);
 }
 
-void file_watcher_add_watches(const char *base_path)
+static void file_watcher_add_watches(const char *base_path,
+	gboolean commit_changes)
 {
 	char path[FILE_KEEPER_PATH_MAX];
 	char attr[FILE_KEEPER_PATH_MAX];
 	const char *name;
+	char *f_path;
 	GFile *file;
 	GFileInfo *info;
 	GFileEnumerator *f_enum;
@@ -207,13 +212,21 @@ void file_watcher_add_watches(const char *base_path)
 		while((info = g_file_enumerator_next_file(f_enum, NULL, NULL))) {
 			g_snprintf(path, sizeof(path), "%s%c%s", base_path,
 				G_DIR_SEPARATOR, g_file_info_get_name(info));
-			file_watcher_add_watches(path);
+			file_watcher_add_watches(path, commit_changes);
 			g_object_unref(info);
 		}
 		g_object_unref(f_enum);
 	} else if (type == G_FILE_TYPE_REGULAR || type == G_FILE_TYPE_SHORTCUT ||
-		type == G_FILE_TYPE_SYMBOLIC_LINK)
-		_file_watcher_monitor_add(file, FALSE);
+		type == G_FILE_TYPE_SYMBOLIC_LINK) {
+		if (commit_changes) {
+			f_path = g_file_get_path(file);
+			if (file_keeper_file_content_has_changed(_keeper, f_path))
+				file_keeper_save_changes(_keeper, f_path, FALSE);
+			file_keeper_add_tracked_file(_keeper, f_path);
+			g_free(f_path);
+		}
+		_file_watcher_monitor_add(file, commit_changes);
+	}
 exit:
 	g_object_unref(file);
 }

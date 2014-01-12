@@ -13,9 +13,11 @@
 
 struct _File_Keeper {
 	char *path;
+	GList *tracked_files;
 };
 
 #define FILE_KEEPER_DB_FOLDER ".db"
+#define FILE_KEEPER_SUFFIX "-changes"
 
 static char * _file_keeper_get_relative_path(const char *base, const char *file)
 {
@@ -41,6 +43,30 @@ static char * _file_keeper_get_file_name(const char *path)
 	path += i;
 	r = g_malloc((size - i) + 1);
 	memcpy(r, path, (size - i) + 1);
+	return r;
+}
+
+static char *_file_keeper_remove_file_name_suffix(const char *name)
+{
+	size_t total;
+	char *r;
+
+	total = strlen(name) - strlen(FILE_KEEPER_SUFFIX) + 1;
+	r = g_malloc(total);
+	memcpy(r, name, total);
+	r[total - 1] = '\0';
+	return r;
+}
+
+static char * _file_keeper_get_original_file_path(char *base_path, char *file_name)
+{
+	size_t stop;
+	char *r;
+
+	stop = strlen(base_path) - strlen(FILE_KEEPER_DB_FOLDER);
+	r = g_malloc(stop + strlen(file_name) + 1);
+	memcpy(r, base_path, stop);
+	memcpy(r + stop, file_name, strlen(file_name) + 1);
 	return r;
 }
 
@@ -100,7 +126,7 @@ File_Keeper *file_keeper_new(const char *base_path)
 		FILE_KEEPER_DB_FOLDER);
 	if (!utils_create_dir_if_not_present(path, NULL))
 		return NULL;
-	keeper = g_malloc(sizeof(File_Keeper));
+	keeper = g_malloc0(sizeof(File_Keeper));
 	keeper->path = g_strdup(path);
 	return keeper;
 }
@@ -108,6 +134,7 @@ File_Keeper *file_keeper_new(const char *base_path)
 void file_keeper_free(File_Keeper *keeper)
 {
 	g_return_if_fail(keeper);
+	file_keeper_commit_deleted_files(keeper);
 	g_free(keeper->path);
 	g_free(keeper);
 }
@@ -137,8 +164,8 @@ static void _file_keeper_get_file_paths(const char *base_path,
 	char linked_file_path[FILE_KEEPER_PATH_MAX];
 	char *name = _file_keeper_get_file_name(file_path);
 
-	g_snprintf(db_path, sizeof(db_path), "%s%c%s-changes", base_path,
-		G_DIR_SEPARATOR, name);
+	g_snprintf(db_path, sizeof(db_path), "%s%c%s%s", base_path,
+		G_DIR_SEPARATOR, name, FILE_KEEPER_SUFFIX);
 	g_snprintf(linked_file_path, sizeof(linked_file_path), "%s%c%s", db_path,
 		G_DIR_SEPARATOR, name);
 	g_free(name);
@@ -195,14 +222,122 @@ gboolean file_keeper_file_content_has_changed(File_Keeper *keeper,
 	return r;
 }
 
+void file_keeper_add_tracked_file(File_Keeper *keeper, const char *path)
+{
+	g_return_if_fail(keeper);
+
+	keeper->tracked_files = g_list_prepend(keeper->tracked_files,
+		_file_keeper_get_file_name(path));
+}
+
+static void _file_keeper_tracked_files_destroy(gpointer data)
+{
+	g_free(data);
+}
+
+static gboolean _file_keeper_prepare_commit_changes(const char *final_path,
+	const char *original_path, const char *file_db_path, gboolean deleting,
+	gboolean exist)
+{
+	char commit_msg[50];
+	char *rel_path;
+	git_repository *repo;
+	gboolean r;
+
+	if (deleting) {
+		if (g_remove(final_path) < 0) {
+			return FALSE;
+		}
+	}
+
+	if (!exist) {
+		if (!_file_keeper_create_hard_link(original_path, final_path))
+			return FALSE;
+			if (git_repository_init(&repo, file_db_path, 0) < 0)
+				return FALSE;
+			g_snprintf(commit_msg, sizeof(commit_msg), "Initing");
+	} else {
+		if (git_repository_open(&repo, file_db_path) < 0)
+			return FALSE;
+		g_snprintf(commit_msg, sizeof(commit_msg), "Changing");
+	}
+
+	rel_path = _file_keeper_get_relative_path(file_db_path, final_path);
+	r = _file_keeper_create_commit(repo, rel_path, commit_msg, deleting);
+	git_repository_free(repo);
+	g_free(rel_path);
+	return r;
+}
+
+void file_keeper_commit_deleted_files(File_Keeper *keeper)
+{
+	GFile *db_dir;
+	GList *itr;
+	GFileEnumerator *f_enum;
+	GFileInfo *info;
+	char attr[50];
+	char *name_no_suffix, *name, *file_db_path, *final_path, *original_path;
+	gboolean found;
+
+	g_return_if_fail(keeper);
+	/* Don't even start !*/
+	if (!keeper->tracked_files)
+		return;
+	db_dir = g_file_new_for_path(keeper->path);
+
+	g_snprintf(attr, sizeof(attr), "%s", G_FILE_ATTRIBUTE_STANDARD_NAME);
+	f_enum = g_file_enumerate_children(db_dir, attr, G_FILE_QUERY_INFO_NONE,
+		NULL, NULL);
+
+	if (f_enum) {
+		while((info = g_file_enumerator_next_file(f_enum, NULL, NULL))) {
+			if (!info)
+				continue;
+			name_no_suffix = _file_keeper_remove_file_name_suffix(
+				g_file_info_get_name(info));
+			found = FALSE;
+			for (itr = keeper->tracked_files; itr; itr = itr->next) {
+				name = itr->data;
+				if (!strcmp(name_no_suffix, name)) {
+					found = TRUE;
+					keeper->tracked_files = g_list_remove(keeper->tracked_files,
+						name);
+					g_free(name);
+					break;
+				}
+			}
+			/* The file was deleted! */
+			if (!found) {
+				printf("%s deleted!\n", name_no_suffix);
+				/* second argument can be NULL here, because we won't use it in the case
+				that the file exist */
+				original_path = _file_keeper_get_original_file_path(keeper->path,
+					name_no_suffix);
+				_file_keeper_get_file_paths(keeper->path, original_path, &file_db_path,
+					&final_path);
+				_file_keeper_prepare_commit_changes(final_path, NULL,
+					file_db_path, TRUE, TRUE);
+				g_free(file_db_path);
+				g_free(final_path);
+				g_free(original_path);
+			}
+			g_free(name_no_suffix);
+			g_object_unref(info);
+		}
+		g_object_unref(f_enum);
+	}
+	g_object_unref(db_dir);
+	g_list_free_full(keeper->tracked_files,
+		_file_keeper_tracked_files_destroy);
+	keeper->tracked_files = NULL;
+}
+
 gboolean file_keeper_save_changes(File_Keeper *keeper, const char *path,
 	gboolean deleting)
 {
 	gboolean r = FALSE;
-	char *rel_path, *file_db_path, *final_path;
+	char *file_db_path, *final_path;
 	gboolean exist;
-	char commit_msg[50];
-	git_repository *repo = NULL;
 
 	g_return_val_if_fail(path, FALSE);
 	g_return_val_if_fail(keeper, FALSE);
@@ -213,29 +348,8 @@ gboolean file_keeper_save_changes(File_Keeper *keeper, const char *path,
 	if (!utils_create_dir_if_not_present(file_db_path, &exist))
 		goto exit;
 
-	if (deleting) {
-		if (g_remove(final_path) < 0) {
-			goto exit;
-		}
-	}
-
-	if (!exist) {
-		if (!_file_keeper_create_hard_link(path, final_path))
-			goto exit;
-			if (git_repository_init(&repo, file_db_path, 0) < 0)
-				goto exit;
-			g_snprintf(commit_msg, sizeof(commit_msg), "Initing");
-	} else {
-		if (git_repository_open(&repo, file_db_path) < 0)
-			goto exit;
-		g_snprintf(commit_msg, sizeof(commit_msg), "Changing");
-	}
-
-	rel_path = _file_keeper_get_relative_path(file_db_path, final_path);
-	r = _file_keeper_create_commit(repo, rel_path, commit_msg, deleting);
-	git_repository_free(repo);
-	g_free(rel_path);
-
+	r = _file_keeper_prepare_commit_changes(final_path, path, file_db_path,
+			deleting, exist);
 exit:
 	g_free(final_path);
 	g_free(file_db_path);

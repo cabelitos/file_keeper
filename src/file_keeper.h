@@ -18,4 +18,8 @@ const char *file_keeper_db_path_get(File_Keeper *keeper);
 
 gboolean file_keeper_file_content_has_changed(File_Keeper *keeper, const char *path);
 
+void file_keeper_add_tracked_file(File_Keeper *keeper, const char *path);
+
+void file_keeper_commit_deleted_files(File_Keeper *keeper);
+
 #endif
