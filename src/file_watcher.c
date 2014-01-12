@@ -210,6 +210,8 @@ static void file_watcher_add_watches(const char *base_path,
 		if (!f_enum)
 			goto exit;
 		while((info = g_file_enumerator_next_file(f_enum, NULL, NULL))) {
+			if (!info)
+				continue;
 			g_snprintf(path, sizeof(path), "%s%c%s", base_path,
 				G_DIR_SEPARATOR, g_file_info_get_name(info));
 			file_watcher_add_watches(path, commit_changes);
