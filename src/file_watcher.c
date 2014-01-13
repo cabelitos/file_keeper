@@ -149,7 +149,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 
 	type = g_file_query_file_type(file, G_FILE_QUERY_INFO_NONE, NULL);
 	if (event == G_FILE_MONITOR_EVENT_DELETED) {
-		g_hash_table_remove(_file_monitors, GINT_TO_POINTER(f_hash));
+		g_hash_table_remove(_file_monitors, GUINT_TO_POINTER(f_hash));
 		/* When we save a binary file (JPG, doc, etc) the original file is deleted and
 			a new one is created. This function will help to check if the file was really
 			deleted. Because if does not we need to create another file monitor to it.
@@ -194,7 +194,7 @@ static void _file_watcher_monitor_add(GFile *file, gboolean is_dir)
 
 	if (!monitor)
 		return;
-	g_hash_table_insert(_file_monitors, GINT_TO_POINTER(g_file_hash(file)),
+	g_hash_table_insert(_file_monitors, GUINT_TO_POINTER(g_file_hash(file)),
 		monitor);
 	g_signal_connect(monitor, "changed",
 		G_CALLBACK(_file_watcher_monitor_changed), NULL);
