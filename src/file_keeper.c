@@ -332,6 +332,22 @@ void file_keeper_commit_deleted_files(File_Keeper *keeper)
 	keeper->tracked_files = NULL;
 }
 
+void file_keeper_recreate_file_link(File_Keeper *keeper, char *path)
+{
+	char *file_db_path, *final_path;
+
+	g_return_if_fail(path);
+	g_return_if_fail(keeper);
+	_file_keeper_get_file_paths(keeper->path, path, &file_db_path,
+		&final_path);
+
+	g_unlink(final_path);
+	_file_keeper_create_hard_link(path, final_path);
+
+	g_free(file_db_path);
+	g_free(final_path);
+}
+
 gboolean file_keeper_save_changes(File_Keeper *keeper, const char *path,
 	gboolean deleting)
 {
@@ -355,6 +371,7 @@ exit:
 	g_free(file_db_path);
 	return r;
 }
+
 
 
 

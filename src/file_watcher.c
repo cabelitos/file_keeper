@@ -1,6 +1,7 @@
 #include <gio/gio.h>
 #include <stdio.h>
 #include <string.h>
+#include <glib/gstdio.h>
 #include "file_watcher.h"
 #include "file_keeper.h"
 #include "utils.h"
@@ -21,6 +22,7 @@ typedef struct _File_Changed_Info {
 } File_Changed_Info;
 
 static void file_watcher_add_watches(const char *base_path, gboolean commit_changes);
+static void _file_watcher_monitor_add(GFile *file, gboolean is_dir);
 
 static File_Changed_Info *_file_watcher_file_changed_info_new(char *path,
 	guint f_hash, gboolean deleted)
@@ -110,6 +112,19 @@ static gboolean _file_watcher_file_changed_info_already_marked(guint f_hash)
 	return FALSE;
 }
 
+static gboolean _file_watcher_file_really_deleted(const char *path)
+{
+	GFile *file;
+
+	if (!g_file_test(path, G_FILE_TEST_EXISTS))
+		return TRUE;
+
+	file = g_file_new_for_path(path);
+	_file_watcher_monitor_add(file, FALSE);
+	g_object_unref(file);
+	return FALSE;
+}
+
 static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	GFile *other, GFileMonitorEvent event, gpointer data)
 {
@@ -135,7 +150,13 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	type = g_file_query_file_type(file, G_FILE_QUERY_INFO_NONE, NULL);
 	if (event == G_FILE_MONITOR_EVENT_DELETED) {
 		g_hash_table_remove(_file_monitors, GINT_TO_POINTER(f_hash));
-		deleting = TRUE;
+		/* When we save a binary file (JPG, doc, etc) the original file is deleted and
+			a new one is created. This function will help to check if the file was really
+			deleted. Because if does not we need to create another file monitor to it.
+		*/
+		deleting = _file_watcher_file_really_deleted(path);
+		if (!deleting)
+			file_keeper_recreate_file_link(_keeper, path);
 	} else if (event == G_FILE_MONITOR_EVENT_CREATED)
 			file_watcher_add_watches(path, FALSE);
 

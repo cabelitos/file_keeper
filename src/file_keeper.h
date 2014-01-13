@@ -20,6 +20,8 @@ gboolean file_keeper_file_content_has_changed(File_Keeper *keeper, const char *p
 
 void file_keeper_add_tracked_file(File_Keeper *keeper, const char *path);
 
+void file_keeper_recreate_file_link(File_Keeper *keeper, char *path);
+
 void file_keeper_commit_deleted_files(File_Keeper *keeper);
 
 #endif
