@@ -13,7 +13,7 @@
 
 struct _File_Keeper {
 	char *path;
-	GList *tracked_files;
+	GHashTable *tracked_files;
 };
 
 #define FILE_KEEPER_DB_FOLDER ".db"
@@ -117,6 +117,11 @@ static gboolean _file_keeper_create_commit(git_repository *repo, const char *pat
 	return TRUE;
 }
 
+static void _file_keeper_key_destroy(gpointer data)
+{
+	g_free(data);
+}
+
 File_Keeper *file_keeper_new(const char *base_path)
 {
 	char path[FILE_KEEPER_PATH_MAX];
@@ -128,13 +133,16 @@ File_Keeper *file_keeper_new(const char *base_path)
 		return NULL;
 	keeper = g_malloc0(sizeof(File_Keeper));
 	keeper->path = g_strdup(path);
+	keeper->tracked_files = g_hash_table_new_full(g_str_hash, g_str_equal,
+		_file_keeper_key_destroy, NULL);
 	return keeper;
 }
 
 void file_keeper_free(File_Keeper *keeper)
 {
 	g_return_if_fail(keeper);
-	file_keeper_commit_deleted_files(keeper);
+	if (keeper->tracked_files)
+		file_keeper_commit_deleted_files(keeper);
 	g_free(keeper->path);
 	g_free(keeper);
 }
@@ -226,13 +234,7 @@ void file_keeper_add_tracked_file(File_Keeper *keeper, const char *path)
 {
 	g_return_if_fail(keeper);
 
-	keeper->tracked_files = g_list_prepend(keeper->tracked_files,
-		_file_keeper_get_file_name(path));
-}
-
-static void _file_keeper_tracked_files_destroy(gpointer data)
-{
-	g_free(data);
+	g_hash_table_add(keeper->tracked_files, _file_keeper_get_file_name(path));
 }
 
 static gboolean _file_keeper_prepare_commit_changes(const char *final_path,
@@ -272,17 +274,13 @@ static gboolean _file_keeper_prepare_commit_changes(const char *final_path,
 void file_keeper_commit_deleted_files(File_Keeper *keeper)
 {
 	GFile *db_dir;
-	GList *itr;
 	GFileEnumerator *f_enum;
 	GFileInfo *info;
 	char attr[50];
-	char *name_no_suffix, *name, *file_db_path, *final_path, *original_path;
-	gboolean found;
+	char *name_no_suffix, *file_db_path, *final_path, *original_path;
 
 	g_return_if_fail(keeper);
-	/* Don't even start !*/
-	if (!keeper->tracked_files)
-		return;
+
 	db_dir = g_file_new_for_path(keeper->path);
 
 	g_snprintf(attr, sizeof(attr), "%s", G_FILE_ATTRIBUTE_STANDARD_NAME);
@@ -295,26 +293,15 @@ void file_keeper_commit_deleted_files(File_Keeper *keeper)
 				continue;
 			name_no_suffix = _file_keeper_remove_file_name_suffix(
 				g_file_info_get_name(info));
-			found = FALSE;
-			for (itr = keeper->tracked_files; itr; itr = itr->next) {
-				name = itr->data;
-				if (!strcmp(name_no_suffix, name)) {
-					found = TRUE;
-					keeper->tracked_files = g_list_remove(keeper->tracked_files,
-						name);
-					g_free(name);
-					break;
-				}
-			}
+
 			/* The file was deleted! */
-			if (!found) {
-				printf("%s deleted!\n", name_no_suffix);
-				/* second argument can be NULL here, because we won't use it in the case
-				that the file exist */
+			if (!g_hash_table_contains(keeper->tracked_files, name_no_suffix)) {
 				original_path = _file_keeper_get_original_file_path(keeper->path,
 					name_no_suffix);
 				_file_keeper_get_file_paths(keeper->path, original_path, &file_db_path,
 					&final_path);
+				/* second argument can be NULL here, because we won't use it in the case
+				that the file exist */
 				_file_keeper_prepare_commit_changes(final_path, NULL,
 					file_db_path, TRUE, TRUE);
 				g_free(file_db_path);
@@ -327,8 +314,7 @@ void file_keeper_commit_deleted_files(File_Keeper *keeper)
 		g_object_unref(f_enum);
 	}
 	g_object_unref(db_dir);
-	g_list_free_full(keeper->tracked_files,
-		_file_keeper_tracked_files_destroy);
+	g_hash_table_destroy(keeper->tracked_files);
 	keeper->tracked_files = NULL;
 }
 
