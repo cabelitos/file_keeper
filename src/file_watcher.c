@@ -165,8 +165,6 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 		g_free(path);
 		return;
 	}
-	if (_timeout_id)
-		g_source_remove(_timeout_id);
 
 	if (((!deleting && file_keeper_file_content_has_changed(_keeper, path)) ||
 		deleting) && !_file_watcher_file_changed_info_already_marked(f_hash)) {
@@ -174,7 +172,9 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 			_file_watcher_file_changed_info_new(path, f_hash, deleting));
 	}
 
-	_timeout_id = g_timeout_add(EXPIRE_TIME, _file_watcher_save_timeout, NULL);
+	if (!_timeout_id)
+		_timeout_id = g_timeout_add(EXPIRE_TIME, _file_watcher_save_timeout,
+			NULL);
 	g_free(path);
 	(void) other;
 	(void) monitor;
