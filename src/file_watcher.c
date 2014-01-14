@@ -101,7 +101,7 @@ static gboolean _file_watcher_save_timeout(gpointer data)
 	return FALSE;
 }
 
-static gboolean _file_watcher_file_changed_info_already_marked(guint f_hash)
+static File_Changed_Info *_file_watcher_file_changed_info_already_marked(guint f_hash)
 {
 	GSList *itr = _changed_files;
 	File_Changed_Info *info;
@@ -109,9 +109,9 @@ static gboolean _file_watcher_file_changed_info_already_marked(guint f_hash)
 	for (itr = _changed_files; itr; itr = itr->next) {
 		info = itr->data;
 		if (info->f_hash == f_hash)
-			return TRUE;
+			return info;
 	}
-	return FALSE;
+	return NULL;
 }
 
 static gboolean _file_watcher_file_really_deleted(const char *path)
@@ -134,6 +134,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	GFileType type;
 	gboolean deleting = FALSE;
 	guint f_hash;
+	File_Changed_Info *info;
 
 	if (event == G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT ||
 		event == G_FILE_MONITOR_EVENT_UNMOUNTED ||
@@ -168,8 +169,11 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 		return;
 	}
 
-	if (((!deleting && file_keeper_file_content_has_changed(_keeper, path)) ||
-		deleting) && !_file_watcher_file_changed_info_already_marked(f_hash)) {
+	info = _file_watcher_file_changed_info_already_marked(f_hash);
+	if (deleting && info)
+			info->deleted = TRUE;
+	else if ((deleting || file_keeper_file_content_has_changed(_keeper, path)) &&
+		!info) {
 		_changed_files = g_slist_prepend(_changed_files,
 			_file_watcher_file_changed_info_new(path, f_hash, deleting));
 	}
