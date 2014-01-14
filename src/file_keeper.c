@@ -156,8 +156,7 @@ const char *file_keeper_db_path_get(File_Keeper *keeper)
 static gboolean _file_keeper_create_hard_link(const char *p1, const char *p2)
 {
 #ifdef G_OS_WIN32
-	/* TODO ! */
-	return FALSE;
+	return CreateHardLink(p2, p1, NULL);
 #else
 	if (link(p1, p2) < 0)
 		return FALSE;
