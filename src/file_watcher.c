@@ -178,7 +178,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 			_file_watcher_file_changed_info_new(path, f_hash, deleting));
 	}
 
-	if (!_timeout_id)
+	if (!_timeout_id && g_slist_length(_changed_files) > 0)
 		_timeout_id = g_timeout_add(EXPIRE_TIME, _file_watcher_save_timeout,
 			NULL);
 	g_free(path);
