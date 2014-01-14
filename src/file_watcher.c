@@ -44,7 +44,9 @@ static void _file_watcher_free_changed_info_and_commit(gpointer data)
 
 static void _file_watcher_value_destroy(gpointer data)
 {
-	g_object_unref(data);
+	GFileMonitor *monitor = data;
+	g_file_monitor_cancel(monitor);
+	g_object_unref(monitor);
 }
 
 void file_watcher_init(void)
