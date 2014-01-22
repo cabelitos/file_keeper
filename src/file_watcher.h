@@ -3,10 +3,12 @@
 
 #include <glib.h>
 
-void file_watcher_init(void);
+typedef struct _File_Watcher File_Watcher;
 
-void file_watcher_shutdown(void);
+File_Watcher *file_watcher_new(void);
 
-void file_watcher_stop_watches(void);
+void file_watcher_free(File_Watcher *watcher);
+
+void file_watcher_stop_watches(File_Watcher *watcher);
 
 #endif
