@@ -21,7 +21,7 @@ typedef struct _File_Changed_Info {
 	gboolean deleted;
 } File_Changed_Info;
 
-static void file_watcher_add_watches(const char *base_path, gboolean commit_changes);
+static void _file_watcher_add_watches(const char *base_path, gboolean commit_changes);
 static void _file_watcher_monitor_add(GFile *file, gboolean is_dir);
 
 static File_Changed_Info *_file_watcher_file_changed_info_new(char *path,
@@ -66,7 +66,7 @@ void file_watcher_init(void)
 
 	_file_monitors = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 		NULL, _file_watcher_value_destroy);
-	file_watcher_add_watches(path, TRUE);
+	_file_watcher_add_watches(path, TRUE);
 	file_keeper_commit_deleted_files(_keeper);
 }
 
@@ -161,7 +161,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 		if (!deleting)
 			file_keeper_recreate_file_link(_keeper, path);
 	} else if (event == G_FILE_MONITOR_EVENT_CREATED)
-			file_watcher_add_watches(path, FALSE);
+			_file_watcher_add_watches(path, FALSE);
 
 	/* We cannot track directories, only the files in it. */
 	if (type == G_FILE_TYPE_DIRECTORY) {
@@ -206,12 +206,11 @@ static void _file_watcher_monitor_add(GFile *file, gboolean is_dir)
 		G_CALLBACK(_file_watcher_monitor_changed), NULL);
 }
 
-static void file_watcher_add_watches(const char *base_path,
+static void _file_watcher_add_watches(const char *base_path,
 	gboolean commit_changes)
 {
 	char path[FILE_KEEPER_PATH_MAX];
 	char attr[FILE_KEEPER_PATH_MAX];
-	const char *name;
 	char *f_path;
 	GFile *file;
 	GFileInfo *info;
@@ -228,7 +227,6 @@ static void file_watcher_add_watches(const char *base_path,
 	if (!info)
 		goto exit;
 	type = g_file_info_get_file_type(info);
-	name = g_file_info_get_name(info);
 	g_object_unref(info);
 	if (type == G_FILE_TYPE_DIRECTORY) {
 		_file_watcher_monitor_add(file, TRUE);
@@ -241,7 +239,7 @@ static void file_watcher_add_watches(const char *base_path,
 				continue;
 			g_snprintf(path, sizeof(path), "%s%c%s", base_path,
 				G_DIR_SEPARATOR, g_file_info_get_name(info));
-			file_watcher_add_watches(path, commit_changes);
+			_file_watcher_add_watches(path, commit_changes);
 			g_object_unref(info);
 		}
 		g_object_unref(f_enum);
