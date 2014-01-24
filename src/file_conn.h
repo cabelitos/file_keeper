@@ -1,5 +1,5 @@
-#ifndef _FILE_COMM_H_
-#define _FILE_COMM_H_
+#ifndef _FILE_CONN_H_
+#define _FILE_CONN_H_
 
 #include <glib.h>
 #include <glib-object.h>
