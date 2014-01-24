@@ -15,5 +15,5 @@ pkg_check_modules(GITLIB REQUIRED libgit2)
 
 include_directories(${GIO_INCLUDE_DIRS} ${GLIB_INCLUDE_DIRS} ${GITLIB_INCLUDE_DIRS})
 link_directories(${GIO_LIBRARY_DIRS} ${GLIB_LIBRARY_DIRS} ${GITLIB_LIBRARY_DIRS})
-add_executable(file_watcher src/main.c src/file_watcher.c src/file_keeper.c src/utils.c)
+add_executable(file_watcher src/main.c src/file_watcher.c src/file_keeper.c src/utils.c src/file_conn.c)
 target_link_libraries(file_watcher ${GLIB_LIBRARIES} ${GIO_LIBRARIES} ${GITLIB_LIBRARIES})
