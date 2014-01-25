@@ -224,7 +224,6 @@ static void _file_watcher_add_watches(const char *base_path,
 {
 	char path[FILE_KEEPER_PATH_MAX];
 	char attr[FILE_KEEPER_PATH_MAX];
-	char *f_path;
 	GFile *file;
 	GFileInfo *info;
 	GFileEnumerator *f_enum;
@@ -259,11 +258,9 @@ static void _file_watcher_add_watches(const char *base_path,
 	} else if (type == G_FILE_TYPE_REGULAR || type == G_FILE_TYPE_SHORTCUT ||
 		type == G_FILE_TYPE_SYMBOLIC_LINK) {
 		if (commit_changes) {
-			f_path = g_file_get_path(file);
-			if (file_keeper_file_content_has_changed(watcher->keeper, f_path))
-				file_keeper_save_changes(watcher->keeper, f_path, FALSE);
-			file_keeper_add_tracked_file(watcher->keeper, f_path);
-			g_free(f_path);
+			if (file_keeper_file_content_has_changed(watcher->keeper, base_path))
+				file_keeper_save_changes(watcher->keeper, base_path, FALSE);
+			file_keeper_add_tracked_file(watcher->keeper, base_path);
 		}
 		_file_watcher_monitor_add(file, commit_changes, watcher);
 		watcher->file_names = g_list_prepend(watcher->file_names,
