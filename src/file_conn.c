@@ -18,7 +18,8 @@ G_DEFINE_TYPE_WITH_PRIVATE (FileConn, file_conn, G_TYPE_OBJECT)
 
 static guint signals[LAST_SIGNAL] = { 0 };
 
-static gboolean _file_conn_can_read(GIOChannel *source, GIOCondition cond,
+static gboolean
+file_conn_can_read(GIOChannel *source, GIOCondition cond,
 	gpointer data)
 {
 	gboolean r = TRUE;
@@ -42,7 +43,8 @@ static gboolean _file_conn_can_read(GIOChannel *source, GIOCondition cond,
 	return r;
 }
 
-static gboolean _file_conn_incoming_conn(GSocketService *service,
+static gboolean
+file_conn_incoming_conn(GSocketService *service,
 	GSocketConnection *connection, GObject *source, gpointer data)
 {
 	FileConn *self = data;
@@ -60,7 +62,7 @@ static gboolean _file_conn_incoming_conn(GSocketService *service,
 
 	self->priv->watch_id = g_io_add_watch(channel,
 		G_IO_IN | G_IO_ERR | G_IO_HUP,
-		_file_conn_can_read, self);
+		file_conn_can_read, self);
 
 	g_io_channel_unref(channel);
 	self->priv->connection = g_object_ref(connection);
@@ -121,10 +123,11 @@ file_conn_init(FileConn *self)
 		8001, NULL, NULL);
 
 	g_signal_connect(self->priv->service, "incoming",
-		G_CALLBACK(_file_conn_incoming_conn), self);
+		G_CALLBACK(file_conn_incoming_conn), self);
 }
 
-gboolean file_conn_start_listen(FileConn *self, guint16 port)
+gboolean
+file_conn_start_listen(FileConn *self, guint16 port)
 {
 	g_return_val_if_fail(self, FALSE);
 
@@ -137,7 +140,8 @@ gboolean file_conn_start_listen(FileConn *self, guint16 port)
 
 	return TRUE;
 }
-FileConn *file_conn_new(void)
+FileConn *
+file_conn_new(void)
 {
 	return g_object_new (G_TYPE_FILE_CONN, NULL);
 }
