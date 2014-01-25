@@ -21,7 +21,7 @@ struct _File_Watcher {
 	GSList *changed_files;
 	File_Keeper *keeper;
 	GHashTable *file_monitors;
-	GList *file_names;
+	GList *file_names; /* It stored only the files that we monitor (excludes directories) */
 };
 
 static void _file_watcher_add_watches(const char *base_path, gboolean commit_changes,
@@ -136,6 +136,22 @@ static gboolean _file_watcher_file_really_deleted(const char *path,
 	return FALSE;
 }
 
+static void _file_watcher_remove_from_file_names_list(File_Watcher *watcher,
+	const char *path)
+{
+	char *file_name = utils_get_file_name(path);
+	GList *itr;
+
+	for (itr = watcher->file_names; itr; itr = itr->next) {
+		if (!strcmp(itr->data, file_name)) {
+			g_free(itr->data);
+			watcher->file_names = g_list_delete_link(watcher->file_names, itr);
+			break;
+		}
+	}
+	g_free(file_name);
+}
+
 static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	GFile *other, GFileMonitorEvent event, gpointer data)
 {
@@ -163,6 +179,7 @@ static void _file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	type = g_file_query_file_type(file, G_FILE_QUERY_INFO_NONE, NULL);
 	if (event == G_FILE_MONITOR_EVENT_DELETED) {
 		g_hash_table_remove(watcher->file_monitors, GUINT_TO_POINTER(f_hash));
+		_file_watcher_remove_from_file_names_list(watcher, path);
 		/* When we save a binary file (JPG, doc, etc) the original file is deleted and
 			a new one is created. This function will help to check if the file was really
 			deleted. Because if does not we need to create another file monitor to it.
