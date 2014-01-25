@@ -53,7 +53,8 @@ char *file_msg_to_string(FileMsg *self);
 
 File_Message_Operation file_msg_get_operation_type(FileMsg *self);
 
-FileMsg *file_msg_from_string_new(const char *str);
+FileMsg *file_msg_from_string_command_new(const char *str);
+FileMsg *file_msg_from_operation_and_file_new(File_Message_Operation type, const char *file);
 
 FileMsg *file_msg_new(void);
 

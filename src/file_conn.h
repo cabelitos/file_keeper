@@ -3,6 +3,7 @@
 
 #include <glib.h>
 #include <glib-object.h>
+#include "file_message.h"
 
 
 #define G_TYPE_FILE_CONN         (file_conn_get_type ())
@@ -34,5 +35,7 @@ struct _FileConnClass
 FileConn *file_conn_new(void);
 gboolean file_conn_start_listen(FileConn *self, guint16 port);
 GType file_conn_get_type(void);
+
+gboolean file_conn_send_msg(FileConn *self, FileMsg *msg);
 
 #endif

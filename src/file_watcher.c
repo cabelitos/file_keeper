@@ -21,6 +21,7 @@ struct _File_Watcher {
 	GSList *changed_files;
 	File_Keeper *keeper;
 	GHashTable *file_monitors;
+	GList *file_names;
 };
 
 static void _file_watcher_add_watches(const char *base_path, gboolean commit_changes,
@@ -52,6 +53,11 @@ static void _file_watcher_value_destroy(gpointer data)
 	GFileMonitor *monitor = data;
 	g_file_monitor_cancel(monitor);
 	g_object_unref(monitor);
+}
+
+static void _file_watcher_file_names_free(gpointer data)
+{
+	g_free(data);
 }
 
 File_Watcher *file_watcher_new(void)
@@ -87,6 +93,7 @@ void file_watcher_free(File_Watcher *watcher)
 	g_hash_table_destroy(watcher->file_monitors);
 	g_slist_free_full(watcher->changed_files,
 		_file_watcher_free_changed_info_and_commit);
+	g_list_free_full(watcher->file_names, _file_watcher_file_names_free);
 	file_keeper_free(watcher->keeper);
 	g_free(watcher);
 }
@@ -233,8 +240,8 @@ static void _file_watcher_add_watches(const char *base_path,
 	if (!info)
 		goto exit;
 	type = g_file_info_get_file_type(info);
-	g_object_unref(info);
 	if (type == G_FILE_TYPE_DIRECTORY) {
+		g_object_unref(info);
 		_file_watcher_monitor_add(file, TRUE, watcher);
 		f_enum = g_file_enumerate_children(file, attr, G_FILE_QUERY_INFO_NONE,
 			NULL, NULL);
@@ -259,9 +266,18 @@ static void _file_watcher_add_watches(const char *base_path,
 			g_free(f_path);
 		}
 		_file_watcher_monitor_add(file, commit_changes, watcher);
+		watcher->file_names = g_list_prepend(watcher->file_names,
+			g_strdup(g_file_info_get_name(info)));
+		g_object_unref(info);
 	}
 exit:
 	g_object_unref(file);
+}
+
+GList *file_watcher_get_monitored_files(File_Watcher *watcher)
+{
+	g_return_val_if_fail(watcher, NULL);
+	return g_list_copy(watcher->file_names);
 }
 
 void file_watcher_stop_watches(File_Watcher *watcher)

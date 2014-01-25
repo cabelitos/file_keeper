@@ -225,7 +225,7 @@ file_msg_to_string(FileMsg *self)
 }
 
 FileMsg *
-file_msg_from_string_new(const char *str)
+file_msg_from_string_command_new(const char *str)
 {
 	FileMsg *msg;
 
@@ -233,6 +233,14 @@ file_msg_from_string_new(const char *str)
 	msg = g_object_new(G_TYPE_FILE_MSG, NULL);
 	file_msg_parse_command(msg, str);
 	return msg;
+}
+
+FileMsg *
+file_msg_from_operation_and_file_new(File_Message_Operation type,
+	const char *file)
+{
+	return g_object_new(G_TYPE_FILE_MSG, "type", type, "file-name",
+		file, NULL);
 }
 
 FileMsg *

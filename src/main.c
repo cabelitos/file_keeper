@@ -3,10 +3,23 @@
 #include <stdio.h>
 #include "file_watcher.h"
 #include "file_conn.h"
+#include "file_message.h"
 
-static void _client_connected(FileConn *self)
+static void
+_client_connected(FileConn *self, gpointer data)
 {
-	/* TODO */
+	FileMsg *msg;
+	GList *files = file_watcher_get_monitored_files(data);
+	GList *itr;
+
+	for (itr = files; itr; itr = itr->next) {
+		msg = file_msg_from_operation_and_file_new(FILE_MESSAGE_NEW,
+			itr->data);
+		if (!file_conn_send_msg(self, msg))
+			printf("Could not send message to the client!\n");
+		g_object_unref(msg);
+	}
+	g_list_free(files);
 }
 
 int main(int argc, char **argv)
@@ -25,7 +38,7 @@ int main(int argc, char **argv)
 
 	conn = file_conn_new();
 	g_signal_connect(conn, "client_connected",
-		G_CALLBACK(_client_connected), NULL);
+		G_CALLBACK(_client_connected), watcher);
 	file_conn_start_listen(conn, 8001);
 
 	git_threads_init();

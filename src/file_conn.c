@@ -7,6 +7,7 @@ struct _FileConnPrivate {
 	GSocketService *service;
 	GSocketConnection *connection;
 	guint watch_id;
+	GIOChannel *channel;
 };
 
 enum {
@@ -37,10 +38,30 @@ file_conn_can_read(GIOChannel *source, GIOCondition cond,
 		self->priv->watch_id = 0;
 	} else {
 		/* TODO, notify msg */
-		printf("%s", s->str);
 	}
 	g_string_free(s, TRUE);
 	return r;
+}
+
+gboolean
+file_conn_send_msg(FileConn *self, FileMsg *msg)
+{
+	GIOStatus status;
+	char *str;
+	g_return_val_if_fail(self, FALSE);
+	g_return_val_if_fail(msg, FALSE);
+
+	str = file_msg_to_string(msg);
+
+	status = g_io_channel_write_chars(self->priv->channel,
+		str, -1, NULL, NULL);
+
+	printf("Message: %s sent to client\n", str);
+	g_free(str);
+
+	if (status != G_IO_STATUS_NORMAL)
+		return FALSE;
+	return TRUE;
 }
 
 static gboolean
@@ -64,7 +85,7 @@ file_conn_incoming_conn(GSocketService *service,
 		G_IO_IN | G_IO_ERR | G_IO_HUP,
 		file_conn_can_read, self);
 
-	g_io_channel_unref(channel);
+	self->priv->channel = channel;
 	self->priv->connection = g_object_ref(connection);
 
 	g_socket_service_stop(service);
@@ -80,7 +101,7 @@ file_conn_dispose(GObject *gobject)
 	FileConn *self = G_FILE_CONN(gobject);
 
 	g_clear_object(&self->priv->connection);
-	g_clear_object (&self->priv->service);
+	g_clear_object(&self->priv->service);
 
 	G_OBJECT_CLASS(file_conn_parent_class)->dispose(gobject);
 }
@@ -92,6 +113,7 @@ file_conn_finalize(GObject *gobject)
 
   if (self->priv->watch_id)
   	g_source_remove(self->priv->watch_id);
+  g_io_channel_unref(self->priv->channel);
   G_OBJECT_CLASS(file_conn_parent_class)->finalize(gobject);
 }
 
