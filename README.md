@@ -4,10 +4,12 @@ File Keeper
 What is File Keeper ?
 ---------------------
 
-File keeper is a daemon that will create a directory at your home directory called file_keeper,
-everything that you save in this directory will have its changes saved individually in the .db directory.
-Making it very easy to track individual file changes.
-Don't worry about your O.S, the file keeper will run on: Linux, Windows and Mac OS.
+File keeper is a file tracking software that will record all file changes allowing the user
+to restore old versions of a given file.
+
+To keep track of your files is easy, just move them to the file_keeper directory localized
+at you home directory.
+
 
 What I need to compile it?
 --------------------------
@@ -21,12 +23,12 @@ Ok ok.
 
 Linux - Fedora: 
 ```shell
-sudo yum install cmake libgit2 glib-devel
+sudo yum install cmake libgit2-devel glib-devel
 ```
 
 Mac OS  ( Install homebrew if neeed):
 ```shell
-homebrew install glib libgit2 cmake
+brew install glib libgit2 cmake
 ```
 
 Windows:
@@ -47,9 +49,4 @@ cmake .
 make
 ```
 
-TODO
------
-- [ ] Make it distributed: Spread the files on servers (If the user wants to).
-- [ ] Create a GUI for it, so the user can easily recover older versions.
-- [ ] Mark files as deleted.
 
