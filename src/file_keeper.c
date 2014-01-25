@@ -19,57 +19,6 @@ struct _File_Keeper {
 #define FILE_KEEPER_DB_FOLDER ".db"
 #define FILE_KEEPER_SUFFIX "-changes"
 
-static char * _file_keeper_get_relative_path(const char *base, const char *file)
-{
-	size_t r_size, start;
-	char *r;
-
-	/* +1 to skip the '/' */
-	start = strlen(base) + 1;
-	r_size = (strlen(file) - start) + 1;
-	file += start;
-	r = g_malloc(r_size);
-	memcpy(r, file, r_size);
-	return r;
-}
-
-static char * _file_keeper_get_file_name(const char *path)
-{
-	size_t size = strlen(path), i;
-	char *r;
-	i = size;
-	while(path[i-1] != G_DIR_SEPARATOR)
-		i--;
-	path += i;
-	r = g_malloc((size - i) + 1);
-	memcpy(r, path, (size - i) + 1);
-	return r;
-}
-
-static char *_file_keeper_remove_file_name_suffix(const char *name)
-{
-	size_t total;
-	char *r;
-
-	total = strlen(name) - strlen(FILE_KEEPER_SUFFIX) + 1;
-	r = g_malloc(total);
-	memcpy(r, name, total);
-	r[total - 1] = '\0';
-	return r;
-}
-
-static char * _file_keeper_get_original_file_path(char *base_path, char *file_name)
-{
-	size_t stop;
-	char *r;
-
-	stop = strlen(base_path) - strlen(FILE_KEEPER_DB_FOLDER);
-	r = g_malloc(stop + strlen(file_name) + 1);
-	memcpy(r, base_path, stop);
-	memcpy(r + stop, file_name, strlen(file_name) + 1);
-	return r;
-}
-
 static gboolean _file_keeper_create_commit(git_repository *repo, const char *path,
 	const char *msg, gboolean deleting)
 {
@@ -169,7 +118,7 @@ static void _file_keeper_get_file_paths(const char *base_path,
 {
 	char db_path[FILE_KEEPER_PATH_MAX];
 	char linked_file_path[FILE_KEEPER_PATH_MAX];
-	char *name = _file_keeper_get_file_name(file_path);
+	char *name = utils_get_file_name(file_path);
 
 	g_snprintf(db_path, sizeof(db_path), "%s%c%s%s", base_path,
 		G_DIR_SEPARATOR, name, FILE_KEEPER_SUFFIX);
@@ -233,7 +182,7 @@ void file_keeper_add_tracked_file(File_Keeper *keeper, const char *path)
 {
 	g_return_if_fail(keeper);
 
-	g_hash_table_add(keeper->tracked_files, _file_keeper_get_file_name(path));
+	g_hash_table_add(keeper->tracked_files, utils_get_file_name(path));
 }
 
 static gboolean _file_keeper_prepare_commit_changes(const char *final_path,
@@ -263,7 +212,7 @@ static gboolean _file_keeper_prepare_commit_changes(const char *final_path,
 		g_snprintf(commit_msg, sizeof(commit_msg), "Changing");
 	}
 
-	rel_path = _file_keeper_get_relative_path(file_db_path, final_path);
+	rel_path = utils_get_relative_path(file_db_path, final_path);
 	r = _file_keeper_create_commit(repo, rel_path, commit_msg, deleting);
 	git_repository_free(repo);
 	g_free(rel_path);
@@ -290,13 +239,14 @@ void file_keeper_commit_deleted_files(File_Keeper *keeper)
 		while((info = g_file_enumerator_next_file(f_enum, NULL, NULL))) {
 			if (!info)
 				continue;
-			name_no_suffix = _file_keeper_remove_file_name_suffix(
+			name_no_suffix = utils_remove_file_name_suffix(
+				FILE_KEEPER_SUFFIX,
 				g_file_info_get_name(info));
 
 			/* The file was deleted! */
 			if (!g_hash_table_contains(keeper->tracked_files, name_no_suffix)) {
-				original_path = _file_keeper_get_original_file_path(keeper->path,
-					name_no_suffix);
+				original_path = utils_get_original_file_path(keeper->path,
+					name_no_suffix, FILE_KEEPER_DB_FOLDER);
 				_file_keeper_get_file_paths(keeper->path, original_path, &file_db_path,
 					&final_path);
 				/* second argument can be NULL here, because we won't use it in the case
