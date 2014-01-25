@@ -49,4 +49,12 @@ cmake .
 make
 ```
 
+TODO
+-------
+
+* Create a GUI application.
+* Normalize namespace.
+* Transform file_watcher.c in a class.
+* Test on Windows
+
 
