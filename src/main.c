@@ -6,7 +6,7 @@
 #include "file_message.h"
 
 static void
-_client_connected(FileConn *conn, gpointer data)
+client_connected(FileConn *conn, gpointer data)
 {
 	FileMsg *msg;
 	GList *files = file_watcher_get_monitored_files(data);
@@ -23,7 +23,7 @@ _client_connected(FileConn *conn, gpointer data)
 }
 
 static void
-_handle_file_versions_request(File_Watcher *watcher, FileConn *conn,
+handle_file_versions_request(FileWatcher *watcher, FileConn *conn,
 	const char *file_name)
 {
 	GList *versions = file_watcher_request_file_versions(watcher, file_name);
@@ -45,20 +45,21 @@ _handle_file_versions_request(File_Watcher *watcher, FileConn *conn,
 }
 
 static void
-_client_request(FileConn *conn, FileMsg *msg, gpointer data)
+client_request(FileConn *conn, FileMsg *msg, gpointer data)
 {
 	File_Message_Operation op = file_msg_get_operation_type(msg);
 	if (op == FILE_MESSAGE_INVALID_TYPE) {
 		printf("Invalid message!\n");
 		return;
 	} else if (op == FILE_MESSSAGE_VERSIONS)
-		_handle_file_versions_request(data, conn, file_msg_get_file(msg));
+		handle_file_versions_request(data, conn, file_msg_get_file(msg));
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	GMainLoop *loop;
-	File_Watcher *watcher;
+	FileWatcher *watcher;
 	FileConn *conn;
 
 	(void) argc;
@@ -72,9 +73,9 @@ int main(int argc, char **argv)
 	conn = file_conn_new();
 
 	g_signal_connect(conn, "client_connected",
-		G_CALLBACK(_client_connected), watcher);
+		G_CALLBACK(client_connected), watcher);
 	g_signal_connect(conn, "client_request",
-		G_CALLBACK(_client_request), watcher);
+		G_CALLBACK(client_request), watcher);
 
 	file_conn_start_listen(conn, 8001);
 

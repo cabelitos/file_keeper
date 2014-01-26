@@ -175,6 +175,7 @@ file_conn_start_listen(FileConn *self, guint16 port)
 
 	return TRUE;
 }
+
 FileConn *
 file_conn_new(void)
 {
