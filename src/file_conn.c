@@ -12,17 +12,19 @@ struct _FileConnPrivate {
 
 enum {
 	CLIENT_CONNECTED,
+	CLIENT_REQUEST,
 	LAST_SIGNAL
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (FileConn, file_conn, G_TYPE_OBJECT)
 
-static guint signals[LAST_SIGNAL] = { 0 };
+static guint signals[LAST_SIGNAL] = { 0, 0 };
 
 static gboolean
 file_conn_can_read(GIOChannel *source, GIOCondition cond,
 	gpointer data)
 {
+	FileMsg *msg;
 	gboolean r = TRUE;
 	FileConn *self = data;
 	GString *s = g_string_new(NULL);
@@ -37,7 +39,9 @@ file_conn_can_read(GIOChannel *source, GIOCondition cond,
 		g_socket_service_start(self->priv->service);
 		self->priv->watch_id = 0;
 	} else {
-		/* TODO, notify msg */
+		msg = file_msg_from_string_command_new(s->str);
+		g_signal_emit(self, signals[CLIENT_REQUEST], 0, msg);
+		g_object_unref(msg);
 	}
 	g_string_free(s, TRUE);
 	return r;
@@ -132,6 +136,15 @@ file_conn_class_init(FileConnClass *klass)
 		  NULL, NULL,
 		  NULL,
 		  G_TYPE_NONE, 0, NULL);
+
+	signals[CLIENT_REQUEST] =
+		g_signal_new ("client_request",
+		  G_TYPE_FILE_CONN,
+		  G_SIGNAL_RUN_LAST,
+		  G_STRUCT_OFFSET (FileConnClass, client_request),
+		  NULL, NULL,
+		  NULL,
+		  G_TYPE_NONE, 1, G_TYPE_FILE_MSG);
 }
 
 static void

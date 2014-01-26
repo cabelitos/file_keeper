@@ -29,7 +29,9 @@ file_msg_operation_emum_get_type(void)
 			{ FILE_MESSAGE_NEW, "FILE_MESSAGE_NEW", "A new file" },
 			{ FILE_MESSAGE_DELETED, "FILE_MESSAGE_DELETED", "A deleted file" },
 			{ FILE_MESSAGE_VERSION, "FILE_MESSAGE_VERSION", "New file version" },
-			{ FILE_MESSAGE_REVERT, "FILE_MESSAGE_REVERT", "Rever a file" },
+			{ FILE_MESSAGE_REVERT, "FILE_MESSAGE_REVERT", "Revert a file" },
+			{ FILE_MESSSAGE_VERSIONS, "FILE_MESSSAGE_VERSIONS",
+				"Request commits of a given file" },
 			{ 0, NULL, NULL }
 		};
 		GType type = g_enum_register_static(
@@ -54,7 +56,7 @@ file_msg_set_property(GObject *obj, guint id, const GValue *value,
 			file_msg_set_file(self, g_value_get_string(value));
 			break;
 		case PROP_TIMESTAMP:
-			file_msg_set_timetamp(self, g_value_get_int64(value));
+			file_msg_set_timestamp(self, g_value_get_int64(value));
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, pspec);
@@ -148,7 +150,7 @@ file_msg_parse_command(FileMsg *self, const char *str)
 		timestamp = g_match_info_fetch(info, 3);
 		file_msg_set_operation(self, (File_Message_Operation)atoi(command));
 		file_msg_set_file(self, file);
-		file_msg_set_timetamp(self, g_ascii_strtoll(timestamp, NULL, 10));
+		file_msg_set_timestamp(self, g_ascii_strtoll(timestamp, NULL, 10));
 		g_free(command);
 		g_free(file);
 		g_free(timestamp);
@@ -185,7 +187,7 @@ file_msg_get_file(FileMsg *self)
 }
 
 File_Message_Operation
-file_msg_type_get_type(FileMsg *self)
+file_msg_get_operation_type(FileMsg *self)
 {
 	g_return_val_if_fail(self, FILE_MESSAGE_INVALID_TYPE);
 	return self->priv->type;
@@ -199,7 +201,7 @@ file_msg_get_timestamp(FileMsg *self)
 }
 
 void
-file_msg_set_timetamp(FileMsg *self, gint64 timestamp)
+file_msg_set_timestamp(FileMsg *self, gint64 timestamp)
 {
 	g_return_if_fail(self);
 	self->priv->timestamp = timestamp;

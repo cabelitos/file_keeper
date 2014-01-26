@@ -9,6 +9,8 @@ File_Watcher *file_watcher_new(void);
 
 GList *file_watcher_get_monitored_files(File_Watcher *watcher);
 
+GList *file_watcher_request_file_versions(File_Watcher *watcher, const char *file);
+
 void file_watcher_free(File_Watcher *watcher);
 
 void file_watcher_stop_watches(File_Watcher *watcher);

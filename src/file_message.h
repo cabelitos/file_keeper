@@ -14,7 +14,8 @@ typedef enum _File_Message_Operation {
 	FILE_MESSAGE_VERSION, /* A  file commit */
 
 	/* Client to server */
-	FILE_MESSAGE_REVERT
+	FILE_MESSAGE_REVERT, /* Request a file revert */
+	FILE_MESSSAGE_VERSIONS, /* Request versions of a given file*/
 } File_Message_Operation;
 
 #define G_TYPE_FILE_MSG         (file_msg_get_type ())
@@ -47,7 +48,7 @@ const char *file_msg_get_file(FileMsg *self);
 
 gint64 file_msg_get_timestamp(FileMsg *self);
 
-void file_msg_set_timetamp(FileMsg *self, gint64 timestamp);
+void file_msg_set_timestamp(FileMsg *self, gint64 timestamp);
 
 char *file_msg_to_string(FileMsg *self);
 

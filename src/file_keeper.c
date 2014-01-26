@@ -114,17 +114,24 @@ static gboolean _file_keeper_create_hard_link(const char *p1, const char *p2)
 }
 
 static void _file_keeper_get_file_paths(const char *base_path,
-	const char *file_path, char **link_db_path, char **link_file)
+	const char *file_path, char **link_db_path, char **link_file,
+	gboolean fetch_file_name)
 {
 	char db_path[FILE_KEEPER_PATH_MAX];
 	char linked_file_path[FILE_KEEPER_PATH_MAX];
-	char *name = utils_get_file_name(file_path);
+	char *name;
+
+	if (fetch_file_name) /* file_path already has the  file name*/
+		name = utils_get_file_name(file_path);
+	else
+		name = (char *)file_path;
 
 	g_snprintf(db_path, sizeof(db_path), "%s%c%s%s", base_path,
 		G_DIR_SEPARATOR, name, FILE_KEEPER_SUFFIX);
 	g_snprintf(linked_file_path, sizeof(linked_file_path), "%s%c%s", db_path,
 		G_DIR_SEPARATOR, name);
-	g_free(name);
+	if (fetch_file_name)
+		g_free(name);
 	*link_db_path = g_strdup(db_path);
 	*link_file = g_strdup(linked_file_path);
 }
@@ -166,7 +173,7 @@ gboolean file_keeper_file_content_has_changed(File_Keeper *keeper,
 	g_return_val_if_fail(path, FALSE);
 	g_return_val_if_fail(keeper, FALSE);
 
-	_file_keeper_get_file_paths(keeper->path, path, &db_path, &file_path);
+	_file_keeper_get_file_paths(keeper->path, path, &db_path, &file_path, TRUE);
 
 	/* We do not track this file yet, we must create the repo ! */
 	if (!g_file_test(db_path, G_FILE_TEST_EXISTS))
@@ -248,7 +255,7 @@ void file_keeper_commit_deleted_files(File_Keeper *keeper)
 				original_path = utils_get_original_file_path(keeper->path,
 					name_no_suffix, FILE_KEEPER_DB_FOLDER);
 				_file_keeper_get_file_paths(keeper->path, original_path, &file_db_path,
-					&final_path);
+					&final_path, TRUE);
 				/* second argument can be NULL here, because we won't use it in the case
 				that the file exist */
 				_file_keeper_prepare_commit_changes(final_path, NULL,
@@ -274,13 +281,62 @@ void file_keeper_recreate_file_link(File_Keeper *keeper, char *path)
 	g_return_if_fail(path);
 	g_return_if_fail(keeper);
 	_file_keeper_get_file_paths(keeper->path, path, &file_db_path,
-		&final_path);
+		&final_path, TRUE);
 
 	g_unlink(final_path);
 	_file_keeper_create_hard_link(path, final_path);
 
 	g_free(file_db_path);
 	g_free(final_path);
+}
+
+GList *file_keeper_get_file_commits(File_Keeper *keeper, const char *file)
+{
+	char *file_db_path, *final_path;
+	git_repository *repo;
+	git_revwalk *walker;
+	git_oid oid;
+	git_commit *commit;
+	git_time_t git_time;
+	GList *commits = NULL;
+	gint64 *unix_time;
+
+	g_return_val_if_fail(keeper, NULL);
+	_file_keeper_get_file_paths(keeper->path, file, &file_db_path,
+		&final_path, FALSE);
+
+	if (git_repository_open(&repo, file_db_path) < 0)
+		goto err_repo;
+
+	if (git_revwalk_new(&walker, repo) < 0)
+		goto err_rev;
+
+	if (git_revwalk_push_head(walker) < 0)
+		goto err_push;
+
+	git_revwalk_sorting(walker, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME);
+
+	while(git_revwalk_next(&oid, walker) == 0) {
+		if (git_commit_lookup(&commit, repo, &oid) < 0)
+			continue;
+
+		git_time = git_commit_time(commit);
+
+		unix_time = g_malloc(sizeof(gint64));
+		*unix_time = (gint64) git_time;
+		commits = g_list_prepend(commits, unix_time);
+
+		git_commit_free(commit);
+	}
+	commits = g_list_reverse(commits);
+err_push:
+	git_revwalk_free(walker);
+err_rev:
+	git_repository_free(repo);
+err_repo:
+	g_free(file_db_path);
+	g_free(final_path);
+	return commits;
 }
 
 gboolean file_keeper_save_changes(File_Keeper *keeper, const char *path,
@@ -294,7 +350,7 @@ gboolean file_keeper_save_changes(File_Keeper *keeper, const char *path,
 	g_return_val_if_fail(keeper, FALSE);
 
 	_file_keeper_get_file_paths(keeper->path, path, &file_db_path,
-		&final_path);
+		&final_path, TRUE);
 
 	if (!utils_create_dir_if_not_present(file_db_path, &exist))
 		goto exit;

@@ -294,6 +294,14 @@ GList *file_watcher_get_monitored_files(File_Watcher *watcher)
 	return g_list_copy(watcher->file_names);
 }
 
+GList *file_watcher_request_file_versions(File_Watcher *watcher, const char *file)
+{
+	g_return_val_if_fail(watcher, NULL);
+	g_return_val_if_fail(file, NULL);
+
+	return file_keeper_get_file_commits(watcher->keeper, file);
+}
+
 void file_watcher_stop_watches(File_Watcher *watcher)
 {
 	g_return_if_fail(watcher);
