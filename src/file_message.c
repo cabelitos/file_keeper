@@ -132,7 +132,7 @@ file_msg_parse_command(FileMsg *self, const char *str)
 	char *timestamp;
 
 	regx = g_regex_new(
-		"<command>(\\w+)</command><file>([\\s+\\w+\\.+]+)</file><timestamp>(\\d+)</timestamp>",
+		"<command>(\\d+)</command><file>([\\s*\\w*\\.*]+)</file>(<timestamp>(\\d+)</timestamp>){0,1}",
 		G_REGEX_CASELESS, 0, NULL);
 
 	g_regex_match_full(regx, str, -1, 0, 0, &info, &err);
@@ -150,7 +150,8 @@ file_msg_parse_command(FileMsg *self, const char *str)
 		timestamp = g_match_info_fetch(info, 3);
 		file_msg_set_operation(self, (File_Message_Operation)atoi(command));
 		file_msg_set_file(self, file);
-		file_msg_set_timestamp(self, g_ascii_strtoll(timestamp, NULL, 10));
+		if (timestamp)
+			file_msg_set_timestamp(self, g_ascii_strtoll(timestamp, NULL, 10));
 		g_free(command);
 		g_free(file);
 		g_free(timestamp);
