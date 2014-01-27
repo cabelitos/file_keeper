@@ -210,7 +210,7 @@ file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	info = file_watcher_file_changed_info_already_marked(f_hash,
 		watcher->changed_files);
 	if (deleting && info)
-			info->deleted = TRUE;
+		info->deleted = TRUE;
 	else if ((deleting ||
 		file_keeper_file_content_has_changed(watcher->keeper, path)) &&
 		!info) {

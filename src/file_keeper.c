@@ -25,11 +25,11 @@ file_keeper_create_commit(git_repository *repo, const char *path,
 {
 	git_signature *sig;
 	git_index *index;
-    git_oid tree_id, commit_id;
-    git_commit *commit = NULL;
-    git_tree *tree;
-    git_reference *head = NULL;
-    unsigned int parents = 0;
+	git_oid tree_id, commit_id;
+	git_commit *commit = NULL;
+	git_tree *tree;
+	git_reference *head = NULL;
+	unsigned int parents = 0;
         
 	if (git_signature_now(&sig, g_get_user_name(), g_get_host_name()) < 0)
 		return FALSE;
@@ -103,8 +103,8 @@ file_keeper_free(FileKeeper *keeper)
 const char *
 file_keeper_db_path_get(FileKeeper *keeper)
 {
-		g_return_val_if_fail(keeper, NULL);
-		return keeper->path;
+	g_return_val_if_fail(keeper, NULL);
+	return keeper->path;
 }
 
 static gboolean
@@ -213,17 +213,16 @@ file_keeper_prepare_commit_changes(const char *final_path,
 	gboolean r;
 
 	if (deleting) {
-		if (g_remove(final_path) < 0) {
+		if (g_remove(final_path) < 0)
 			return FALSE;
-		}
 	}
 
 	if (!exist) {
 		if (!file_keeper_create_hard_link(original_path, final_path))
 			return FALSE;
-			if (git_repository_init(&repo, file_db_path, 0) < 0)
-				return FALSE;
-			g_snprintf(commit_msg, sizeof(commit_msg), "Initing");
+		if (git_repository_init(&repo, file_db_path, 0) < 0)
+			return FALSE;
+		g_snprintf(commit_msg, sizeof(commit_msg), "Initing");
 	} else {
 		if (git_repository_open(&repo, file_db_path) < 0)
 			return FALSE;
