@@ -207,7 +207,7 @@ file_keeper_prepare_commit_changes(const char *final_path,
 	const char *original_path, const char *file_db_path, gboolean deleting,
 	gboolean exist)
 {
-	char commit_msg[50];
+	const char *commit_msg = NULL;
 	char *rel_path;
 	git_repository *repo;
 	gboolean r;
@@ -215,6 +215,7 @@ file_keeper_prepare_commit_changes(const char *final_path,
 	if (deleting) {
 		if (g_remove(final_path) < 0)
 			return FALSE;
+		commit_msg = "Deleting";
 	}
 
 	if (!exist) {
@@ -222,11 +223,12 @@ file_keeper_prepare_commit_changes(const char *final_path,
 			return FALSE;
 		if (git_repository_init(&repo, file_db_path, 0) < 0)
 			return FALSE;
-		g_snprintf(commit_msg, sizeof(commit_msg), "Initing");
+		commit_msg = "Initing";
 	} else {
 		if (git_repository_open(&repo, file_db_path) < 0)
 			return FALSE;
-		g_snprintf(commit_msg, sizeof(commit_msg), "Changing");
+		if (!commit_msg)
+			commit_msg = "Changing";
 	}
 
 	rel_path = utils_get_relative_path(file_db_path, final_path);
