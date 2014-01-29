@@ -24,6 +24,6 @@ void file_keeper_recreate_file_link(FileKeeper *keeper, char *path);
 
 void file_keeper_commit_deleted_files(FileKeeper *keeper);
 
-GList *file_keeper_get_file_commits(FileKeeper *keeper, const char *file);
+GList *file_keeper_get_file_commits(FileKeeper *keeper, const char *path);
 
 #endif

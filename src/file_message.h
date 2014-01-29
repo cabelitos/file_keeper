@@ -42,9 +42,9 @@ struct _FileMsgClass
 
 void file_msg_set_operation(FileMsg *self, File_Message_Operation type);
 
-void file_msg_set_file(FileMsg *self, const char *file);
+void file_msg_set_file_path(FileMsg *self, const char *file_path);
 
-const char *file_msg_get_file(FileMsg *self);
+const char *file_msg_get_file_path(FileMsg *self);
 
 gint64 file_msg_get_timestamp(FileMsg *self);
 
@@ -55,7 +55,7 @@ char *file_msg_to_string(FileMsg *self);
 File_Message_Operation file_msg_get_operation_type(FileMsg *self);
 
 FileMsg *file_msg_from_string_command_new(const char *str);
-FileMsg *file_msg_from_operation_and_file_new(File_Message_Operation type, const char *file);
+FileMsg *file_msg_from_operation_and_file_path_new(File_Message_Operation type, const char *file);
 
 FileMsg *file_msg_new(void);
 

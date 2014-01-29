@@ -13,7 +13,7 @@ client_connected(FileConn *conn, gpointer data)
 	GList *itr;
 
 	for (itr = files; itr; itr = itr->next) {
-		msg = file_msg_from_operation_and_file_new(FILE_MESSAGE_NEW,
+		msg = file_msg_from_operation_and_file_path_new(FILE_MESSAGE_NEW,
 			itr->data);
 		if (!file_conn_send_msg(conn, msg))
 			printf("Could not send message to the client!\n");
@@ -33,7 +33,7 @@ handle_file_versions_request(FileWatcher *watcher, FileConn *conn,
 
 	for (itr = versions; itr; itr = itr->next) {
 		unix_time = itr->data;
-		msg = file_msg_from_operation_and_file_new(FILE_MESSAGE_VERSION,
+		msg = file_msg_from_operation_and_file_path_new(FILE_MESSAGE_VERSION,
 			file_name);
 		file_msg_set_timestamp(msg, *unix_time);
 		if (!file_conn_send_msg(conn, msg))
@@ -52,7 +52,7 @@ client_request(FileConn *conn, FileMsg *msg, gpointer data)
 		printf("Invalid message!\n");
 		return;
 	} else if (op == FILE_MESSSAGE_VERSIONS)
-		handle_file_versions_request(data, conn, file_msg_get_file(msg));
+		handle_file_versions_request(data, conn, file_msg_get_file_path(msg));
 }
 
 int

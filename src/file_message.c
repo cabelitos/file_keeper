@@ -5,7 +5,7 @@
 
 struct _FileMsgPrivate {
 	File_Message_Operation type;
-	char *file_name;
+	char *file_path;
 	gint64 timestamp; /* this is unix type. Will be used in
 		FILE_MESSAGE_VERSION, to indicate the commit date */
 };
@@ -13,7 +13,7 @@ struct _FileMsgPrivate {
 enum {
 	PROP_0,
 	PROP_TYPE,
-	PROP_FILE_NAME,
+	PROP_FILE_PATH,
 	PROP_TIMESTAMP
 };
 
@@ -52,8 +52,8 @@ file_msg_set_property(GObject *obj, guint id, const GValue *value,
 		case PROP_TYPE:
 			file_msg_set_operation(self, g_value_get_enum(value));
 			break;
-		case PROP_FILE_NAME:
-			file_msg_set_file(self, g_value_get_string(value));
+		case PROP_FILE_PATH:
+			file_msg_set_file_path(self, g_value_get_string(value));
 			break;
 		case PROP_TIMESTAMP:
 			file_msg_set_timestamp(self, g_value_get_int64(value));
@@ -72,8 +72,8 @@ file_msg_get_property(GObject *obj, guint id, GValue *value, GParamSpec *pspec)
 		case PROP_TYPE:
 			g_value_set_enum(value, self->priv->type);
 			break;
-		case PROP_FILE_NAME:
-			g_value_set_string(value, self->priv->file_name);
+		case PROP_FILE_PATH:
+			g_value_set_string(value, self->priv->file_path);
 			break;
 		case PROP_TIMESTAMP:
 			g_value_set_int64(value, self->priv->timestamp);
@@ -87,7 +87,7 @@ static void
 file_msg_finalize(GObject *obj)
 {
 	FileMsg *self = G_FILE_MSG(obj);
-	g_free(self->priv->file_name);
+	g_free(self->priv->file_path);
 	G_OBJECT_CLASS(file_msg_parent_class)->finalize(obj);
 }
 
@@ -105,8 +105,8 @@ file_msg_class_init(FileMsgClass *klass)
 		G_TYPE_FILE_MSG_OPERATION_TYPE, FILE_MESSAGE_INVALID_TYPE,
 		G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-	g_object_class_install_property(gobject_class, PROP_FILE_NAME,
-		g_param_spec_string("file-name", "File name", "The file to operate",
+	g_object_class_install_property(gobject_class, PROP_FILE_PATH,
+		g_param_spec_string("file-path", "File path", "The file to operate",
 		NULL, G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
 	g_object_class_install_property(gobject_class, PROP_TIMESTAMP,
@@ -149,7 +149,7 @@ file_msg_parse_command(FileMsg *self, const char *str)
 		file = g_match_info_fetch(info, 2);
 		timestamp = g_match_info_fetch(info, 3);
 		file_msg_set_operation(self, (File_Message_Operation)atoi(command));
-		file_msg_set_file(self, file);
+		file_msg_set_file_path(self, file);
 		if (timestamp)
 			file_msg_set_timestamp(self, g_ascii_strtoll(timestamp, NULL, 10));
 		g_free(command);
@@ -173,18 +173,18 @@ file_msg_set_operation(FileMsg *self, File_Message_Operation type)
 }
 
 void
-file_msg_set_file(FileMsg *self, const char *file)
+file_msg_set_file_path(FileMsg *self, const char *file_path)
 {
 	g_return_if_fail(self);
-	self->priv->file_name = g_strdup(file);
-	g_object_notify(G_OBJECT(self), "file-name");
+	self->priv->file_path = g_strdup(file_path);
+	g_object_notify(G_OBJECT(self), "file-path");
 }
 
 const char *
-file_msg_get_file(FileMsg *self)
+file_msg_get_file_path(FileMsg *self)
 {
 	g_return_val_if_fail(self, NULL);
-	return self->priv->file_name;
+	return self->priv->file_path;
 }
 
 File_Message_Operation
@@ -218,7 +218,7 @@ file_msg_to_string(FileMsg *self)
 	str = g_string_new(NULL);
 	g_string_append_printf(str, "<command>%d</command>",
 		(int)self->priv->type);
-	g_string_append_printf(str, "<file>%s</file>", self->priv->file_name);
+	g_string_append_printf(str, "<file>%s</file>", self->priv->file_path);
 	if (self->priv->type == FILE_MESSAGE_VERSION) {
 		g_string_append_printf(str,
 			"<timestamp>%"G_GINT64_FORMAT"</timestamp>",
@@ -239,10 +239,10 @@ file_msg_from_string_command_new(const char *str)
 }
 
 FileMsg *
-file_msg_from_operation_and_file_new(File_Message_Operation type,
+file_msg_from_operation_and_file_path_new(File_Message_Operation type,
 	const char *file)
 {
-	return g_object_new(G_TYPE_FILE_MSG, "type", type, "file-name",
+	return g_object_new(G_TYPE_FILE_MSG, "type", type, "file-path",
 		file, NULL);
 }
 

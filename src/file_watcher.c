@@ -149,17 +149,15 @@ static void
 file_watcher_remove_from_file_names_list(FileWatcher *watcher,
 	const char *path)
 {
-	char *file_name = utils_get_file_name(path);
 	GList *itr;
 
 	for (itr = watcher->file_names; itr; itr = itr->next) {
-		if (!strcmp(itr->data, file_name)) {
+		if (!strcmp(itr->data, path)) {
 			g_free(itr->data);
 			watcher->file_names = g_list_delete_link(watcher->file_names, itr);
 			break;
 		}
 	}
-	g_free(file_name);
 }
 
 static void
@@ -269,8 +267,8 @@ file_watcher_add_watches(const char *base_path,
 	if (!info)
 		goto exit;
 	type = g_file_info_get_file_type(info);
+	g_object_unref(info);
 	if (type == G_FILE_TYPE_DIRECTORY) {
-		g_object_unref(info);
 		file_watcher_monitor_add(file, TRUE, watcher);
 		f_enum = g_file_enumerate_children(file, attr, G_FILE_QUERY_INFO_NONE,
 			NULL, NULL);
@@ -294,8 +292,7 @@ file_watcher_add_watches(const char *base_path,
 		}
 		file_watcher_monitor_add(file, commit_changes, watcher);
 		watcher->file_names = g_list_prepend(watcher->file_names,
-			g_strdup(g_file_info_get_name(info)));
-		g_object_unref(info);
+			g_strdup(base_path));
 	}
 exit:
 	g_object_unref(file);
@@ -309,12 +306,12 @@ file_watcher_get_monitored_files(FileWatcher *watcher)
 }
 
 GList *
-file_watcher_request_file_versions(FileWatcher *watcher, const char *file)
+file_watcher_request_file_versions(FileWatcher *watcher, const char *path)
 {
 	g_return_val_if_fail(watcher, NULL);
-	g_return_val_if_fail(file, NULL);
+	g_return_val_if_fail(path, NULL);
 
-	return file_keeper_get_file_commits(watcher->keeper, file);
+	return file_keeper_get_file_commits(watcher->keeper, path);
 }
 
 void
