@@ -26,4 +26,6 @@ void file_keeper_commit_deleted_files(FileKeeper *keeper);
 
 GList *file_keeper_get_file_commits(FileKeeper *keeper, const char *path);
 
+gboolean file_keeper_revert_file(FileKeeper *keeper, const char *path, gint64 timestamp);
+
 #endif

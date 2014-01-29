@@ -42,12 +42,18 @@ file_watcher_file_changed_info_new(char *path,
 }
 
 static void
+file_watcher_file_info_free(FileChangedInfo *info)
+{
+	g_free(info->path);
+	g_free(info);
+}
+
+static void
 file_watcher_free_changed_info_and_commit(gpointer data)
 {
 	FileChangedInfo *info = data;
 	file_keeper_save_changes(info->keeper, info->path, info->deleted);
-	g_free(info->path);
-	g_free(info);
+	file_watcher_file_info_free(info);
 }
 
 static void
@@ -303,6 +309,34 @@ file_watcher_get_monitored_files(FileWatcher *watcher)
 {
 	g_return_val_if_fail(watcher, NULL);
 	return g_list_copy(watcher->file_names);
+}
+
+gboolean
+file_watcher_request_revert_file(FileWatcher *watcher, const char *path,
+	gint64 timestamp)
+{
+	GFile *file;
+	FileChangedInfo *info;
+	guint hash;
+
+	g_return_val_if_fail(watcher, FALSE);
+	g_return_val_if_fail(path, FALSE);
+
+	file = g_file_new_for_path(path);
+	hash = g_file_hash(file);
+	g_object_unref(file);
+	info = file_watcher_file_changed_info_already_marked(hash,
+		watcher->changed_files);
+
+	/* Stop listening for changes now ! */
+	g_hash_table_remove(watcher->file_monitors, GUINT_TO_POINTER(hash));
+
+	/* Commit changes before reverting */
+	if (info) {
+		watcher->changed_files = g_slist_remove(watcher->changed_files, info);
+		file_watcher_free_changed_info_and_commit(info);
+	}
+	return file_keeper_revert_file(watcher->keeper, path, timestamp);
 }
 
 GList *

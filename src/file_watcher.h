@@ -15,4 +15,6 @@ void file_watcher_free(FileWatcher *watcher);
 
 void file_watcher_stop_watches(FileWatcher *watcher);
 
+gboolean file_watcher_request_revert_file(FileWatcher *watcher, const char *path, gint64 timestamp);
+
 #endif

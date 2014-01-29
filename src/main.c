@@ -48,11 +48,15 @@ static void
 client_request(FileConn *conn, FileMsg *msg, gpointer data)
 {
 	File_Message_Operation op = file_msg_get_operation_type(msg);
-	if (op == FILE_MESSAGE_INVALID_TYPE) {
+	if (op == FILE_MESSAGE_INVALID_TYPE)
 		printf("Invalid message!\n");
-		return;
-	} else if (op == FILE_MESSSAGE_VERSIONS)
+	else if (op == FILE_MESSSAGE_VERSIONS)
 		handle_file_versions_request(data, conn, file_msg_get_file_path(msg));
+	else if (op == FILE_MESSAGE_REVERT)
+		file_watcher_request_revert_file(data, file_msg_get_file_path(msg),
+			file_msg_get_timestamp(msg));
+	else
+		printf("We are not supposed to handle the op: %d\n", (int) op);
 }
 
 int

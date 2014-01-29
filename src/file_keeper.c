@@ -347,6 +347,78 @@ err_repo:
 	return commits;
 }
 
+static git_commit *
+file_keeper_get_commit_by_date(git_repository *repo, gint64 timestamp)
+{
+	git_commit *commit, *found = NULL;
+	git_oid oid;
+	git_time_t git_time;
+	git_revwalk *walker;
+
+	if (git_revwalk_new(&walker, repo) < 0)
+		return NULL;
+
+	if (git_revwalk_push_head(walker) < 0)
+		goto exit;
+
+	git_revwalk_sorting(walker, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME);
+
+	while(git_revwalk_next(&oid, walker) == 0) {
+		if (git_commit_lookup(&commit, repo, &oid) < 0)
+			continue;
+		git_time = git_commit_time(commit);
+		if (timestamp == (gint64) git_time) {
+			found = commit;
+			break;
+		}
+		git_commit_free(commit);
+	}
+exit:
+	git_revwalk_free(walker);
+	return found;
+}
+
+gboolean
+file_keeper_revert_file(FileKeeper *keeper, const char *path, gint64 timestamp)
+{
+	char *file_db_path, *final_path;
+	git_repository *repo;
+	git_object *commit_obj;
+	git_commit *commit;
+	git_checkout_opts opts = GIT_CHECKOUT_OPTS_INIT;
+	char buf[GIT_OID_HEXSZ + 1];
+
+	g_return_val_if_fail(path, FALSE);
+	g_return_val_if_fail(keeper, FALSE);
+
+	opts.checkout_strategy = GIT_CHECKOUT_FORCE;
+	file_keeper_get_file_paths(keeper->path, path, &file_db_path,
+		&final_path);
+
+	if (git_repository_open(&repo, file_db_path) < 0)
+		goto err_repo;
+
+	commit = file_keeper_get_commit_by_date(repo, timestamp);
+	if (!commit)
+		goto err_commit;
+
+	git_oid_tostr(buf, sizeof(buf), git_commit_id(commit));
+
+	if (git_revparse_single(&commit_obj, repo, buf) < 0)
+		goto err_commit;
+
+	git_checkout_tree(repo, commit_obj, &opts);
+
+	git_commit_free(commit);
+	git_object_free(commit_obj);
+err_commit:
+	git_repository_free(repo);
+err_repo:
+	g_free(final_path);
+	g_free(file_db_path);
+	return TRUE;
+}
+
 gboolean
 file_keeper_save_changes(FileKeeper *keeper, const char *path,
 	gboolean deleting)
