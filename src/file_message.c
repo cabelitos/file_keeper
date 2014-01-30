@@ -29,7 +29,11 @@ file_msg_operation_emum_get_type(void)
 			{ FILE_MESSAGE_NEW, "FILE_MESSAGE_NEW", "A new file" },
 			{ FILE_MESSAGE_DELETED, "FILE_MESSAGE_DELETED", "A deleted file" },
 			{ FILE_MESSAGE_VERSION, "FILE_MESSAGE_VERSION", "New file version" },
-			{ FILE_MESSAGE_REVERT, "FILE_MESSAGE_REVERT", "Revert a file" },
+			{ FILE_MESSAGE_REVERT, "FILE_MESSAGE_REVERT", "Revert a file for preview" },
+			{ FILE_MESSAGE_REVERT_ABORT, "FILE_MESSAGE_REVERT_ABORT",
+				"Abort the revert process" },
+			{ FILE_MESSAGE_REVERT_CONFIRM, "FILE_MESSAGE_REVERT_CONFIRM",
+				"Confirm the file revert" },
 			{ FILE_MESSSAGE_VERSIONS, "FILE_MESSSAGE_VERSIONS",
 				"Request commits of a given file" },
 			{ 0, NULL, NULL }
@@ -165,7 +169,7 @@ file_msg_set_operation(FileMsg *self, File_Message_Operation type)
 {
 	g_return_if_fail(self);
 
-	if (type  < FILE_MESSAGE_INVALID_TYPE || type > FILE_MESSAGE_REVERT)
+	if (type  < FILE_MESSAGE_INVALID_TYPE || type > FILE_MESSSAGE_VERSIONS)
 		self->priv->type = FILE_MESSAGE_INVALID_TYPE;
 	else
 		self->priv->type = type;

@@ -17,4 +17,6 @@ void file_watcher_stop_watches(FileWatcher *watcher);
 
 gboolean file_watcher_request_revert_file(FileWatcher *watcher, const char *path, gint64 timestamp);
 
+gboolean file_watcher_request_revert_end(FileWatcher *watcher, const char *path, gboolean toHead);
+
 #endif

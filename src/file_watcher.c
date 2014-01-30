@@ -339,6 +339,23 @@ file_watcher_request_revert_file(FileWatcher *watcher, const char *path,
 	return file_keeper_revert_file(watcher->keeper, path, timestamp);
 }
 
+gboolean
+file_watcher_request_revert_end(FileWatcher *watcher, const char *path, gboolean toHead)
+{
+	GFile *file;
+	gboolean r;
+
+	g_return_val_if_fail(watcher, FALSE);
+	g_return_val_if_fail(path, FALSE);
+
+	r = file_keeper_reset_file(watcher->keeper, path, toHead);
+
+	file = g_file_new_for_path(path);
+	file_watcher_monitor_add(file, FALSE, watcher);
+	g_object_unref(file);
+	return r;
+}
+
 GList *
 file_watcher_request_file_versions(FileWatcher *watcher, const char *path)
 {

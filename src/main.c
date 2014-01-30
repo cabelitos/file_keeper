@@ -55,6 +55,10 @@ client_request(FileConn *conn, FileMsg *msg, gpointer data)
 	else if (op == FILE_MESSAGE_REVERT)
 		file_watcher_request_revert_file(data, file_msg_get_file_path(msg),
 			file_msg_get_timestamp(msg));
+	else if (op == FILE_MESSAGE_REVERT_ABORT)
+		file_watcher_request_revert_end(data, file_msg_get_file_path(msg), TRUE);
+	else if (op == FILE_MESSAGE_REVERT_CONFIRM)
+		file_watcher_request_revert_end(data, file_msg_get_file_path(msg), FALSE);
 	else
 		printf("We are not supposed to handle the op: %d\n", (int) op);
 }

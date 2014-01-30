@@ -14,6 +14,7 @@
 struct _FileKeeper {
 	char *path;
 	GHashTable *tracked_files;
+	git_commit *commit;
 };
 
 #define FILE_KEEPER_DB_FOLDER ".db"
@@ -96,6 +97,8 @@ file_keeper_free(FileKeeper *keeper)
 	g_return_if_fail(keeper);
 	if (keeper->tracked_files)
 		file_keeper_commit_deleted_files(keeper);
+	if (keeper->commit)
+		git_commit_free(keeper->commit);
 	g_free(keeper->path);
 	g_free(keeper);
 }
@@ -409,14 +412,79 @@ file_keeper_revert_file(FileKeeper *keeper, const char *path, gint64 timestamp)
 
 	git_checkout_tree(repo, commit_obj, &opts);
 
-	git_commit_free(commit);
 	git_object_free(commit_obj);
+	keeper->commit = commit;
 err_commit:
 	git_repository_free(repo);
 err_repo:
 	g_free(final_path);
 	g_free(file_db_path);
 	return TRUE;
+}
+
+gboolean
+file_keeper_recreate_client_file(const char *original, const char *hard_link)
+{
+	GFile *f_link, *f_original;
+	gboolean r;
+
+	/* TODO: CREATE A BACKUP FIRST ! */
+	g_unlink(original);
+
+	f_link = g_file_new_for_path(hard_link);
+	f_original = g_file_new_for_path(original);
+
+	r = g_file_copy(f_link, f_original, G_FILE_COPY_OVERWRITE, NULL, NULL,
+		NULL, NULL);
+	g_object_unref(f_link);
+	g_object_unref(f_original);
+	return r;
+}
+
+gboolean
+file_keeper_reset_file(FileKeeper *keeper, const char *path, gboolean toHead)
+{
+	char *file_db_path, *final_path;
+	git_repository *repo;
+	git_object *obj;
+	gboolean r = FALSE;
+	char buf[GIT_OID_HEXSZ + 1];
+
+	g_return_val_if_fail(path, FALSE);
+	g_return_val_if_fail(keeper, FALSE);
+
+	file_keeper_get_file_paths(keeper->path, path, &file_db_path,
+		&final_path);
+
+	if (git_repository_open(&repo, file_db_path) < 0)
+		goto err_repo;
+
+	if (toHead)
+		g_snprintf(buf, sizeof(buf), "HEAD");
+	else {
+		if (!keeper->commit)
+			goto err_repo;
+
+		git_oid_tostr(buf, sizeof(buf), git_commit_id(keeper->commit));
+		git_commit_free(keeper->commit);
+		keeper->commit = NULL;
+	}
+
+	if (git_revparse_single(&obj, repo, buf) < 0)
+		goto err_parse;
+
+	if (git_reset(repo, obj, GIT_RESET_HARD))
+		goto err_reset;
+
+	r = file_keeper_recreate_client_file(path, final_path);
+err_reset:
+	git_object_free(obj);
+err_parse:
+	git_repository_free(repo);
+err_repo:
+	g_free(final_path);
+	g_free(file_db_path);
+	return r;
 }
 
 gboolean

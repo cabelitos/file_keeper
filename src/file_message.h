@@ -15,6 +15,8 @@ typedef enum _File_Message_Operation {
 
 	/* Client to server */
 	FILE_MESSAGE_REVERT, /* Request a file revert */
+	FILE_MESSAGE_REVERT_ABORT,
+	FILE_MESSAGE_REVERT_CONFIRM,
 	FILE_MESSSAGE_VERSIONS, /* Request versions of a given file*/
 } File_Message_Operation;
 
