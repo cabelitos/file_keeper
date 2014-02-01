@@ -66,7 +66,8 @@ client_request(FileConn *conn, FileMsg *msg, gpointer data)
 	else if (op == FILE_MESSSAGE_VERSIONS)
 		handle_file_versions_request(ctx->watcher, conn,
 			file_msg_get_file_path(msg));
-	else if (op == FILE_MESSAGE_REVERT) {
+	else if (op == FILE_MESSAGE_REVERT &&
+		file_msg_get_timestamp(msg) > 0) {
 		file_watcher_request_revert_file(ctx->watcher,
 			file_msg_get_file_path(msg), file_msg_get_timestamp(msg));
 		watcher_ctx_last_file_replace(ctx, file_msg_get_file_path(msg));
@@ -79,7 +80,7 @@ client_request(FileConn *conn, FileMsg *msg, gpointer data)
 			file_msg_get_file_path(msg), FALSE);
 		watcher_ctx_last_file_replace(ctx, NULL);
 	} else
-		printf("We are not supposed to handle the op: %d\n", (int) op);
+		printf("Could not process the command: %d\n", (int) op);
 }
 
 static void
