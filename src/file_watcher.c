@@ -350,9 +350,11 @@ file_watcher_request_revert_end(FileWatcher *watcher, const char *path, gboolean
 
 	r = file_keeper_reset_file(watcher->keeper, path, toHead);
 
-	file = g_file_new_for_path(path);
-	file_watcher_monitor_add(file, FALSE, watcher);
-	g_object_unref(file);
+	if (r) {
+		file = g_file_new_for_path(path);
+		file_watcher_monitor_add(file, FALSE, watcher);
+		g_object_unref(file);
+	}
 	return r;
 }
 
