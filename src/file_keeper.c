@@ -413,6 +413,9 @@ file_keeper_revert_file(FileKeeper *keeper, const char *path, gint64 timestamp)
 	git_checkout_tree(repo, commit_obj, &opts);
 
 	git_object_free(commit_obj);
+	/* free the previous revert preview */
+	if (keeper->commit)
+		git_commit_free(keeper->commit);
 	keeper->commit = commit;
 err_commit:
 	git_repository_free(repo);
