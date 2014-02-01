@@ -21,7 +21,7 @@ struct _FileWatcher {
 	GSList *changed_files;
 	FileKeeper *keeper;
 	GHashTable *file_monitors;
-	GList *file_names; /* It stored only the files that we monitor (excludes directories) */
+	GList *file_paths; /* It stored only the files that we monitor (excludes directories) */
 };
 
 static void file_watcher_add_watches(const char *base_path, gboolean commit_changes,
@@ -65,7 +65,7 @@ file_watcher_value_destroy(gpointer data)
 }
 
 static void
-file_watcher_file_names_free(gpointer data)
+file_watcher_file_paths_free(gpointer data)
 {
 	g_free(data);
 }
@@ -105,7 +105,7 @@ file_watcher_free(FileWatcher *watcher)
 	g_hash_table_destroy(watcher->file_monitors);
 	g_slist_free_full(watcher->changed_files,
 		file_watcher_free_changed_info_and_commit);
-	g_list_free_full(watcher->file_names, file_watcher_file_names_free);
+	g_list_free_full(watcher->file_paths, file_watcher_file_paths_free);
 	file_keeper_free(watcher->keeper);
 	g_free(watcher);
 }
@@ -152,15 +152,15 @@ file_watcher_file_really_deleted(const char *path,
 }
 
 static void
-file_watcher_remove_from_file_names_list(FileWatcher *watcher,
+file_watcher_remove_from_file_paths_list(FileWatcher *watcher,
 	const char *path)
 {
 	GList *itr;
 
-	for (itr = watcher->file_names; itr; itr = itr->next) {
+	for (itr = watcher->file_paths; itr; itr = itr->next) {
 		if (!strcmp(itr->data, path)) {
 			g_free(itr->data);
-			watcher->file_names = g_list_delete_link(watcher->file_names, itr);
+			watcher->file_paths = g_list_delete_link(watcher->file_paths, itr);
 			break;
 		}
 	}
@@ -194,7 +194,7 @@ file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	type = g_file_query_file_type(file, G_FILE_QUERY_INFO_NONE, NULL);
 	if (event == G_FILE_MONITOR_EVENT_DELETED) {
 		g_hash_table_remove(watcher->file_monitors, GUINT_TO_POINTER(f_hash));
-		file_watcher_remove_from_file_names_list(watcher, path);
+		file_watcher_remove_from_file_paths_list(watcher, path);
 		/* When we save a binary file (JPG, doc, etc) the original file is deleted and
 			a new one is created. This function will help to check if the file was really
 			deleted. Because if does not we need to create another file monitor to it.
@@ -297,7 +297,7 @@ file_watcher_add_watches(const char *base_path,
 			file_keeper_add_tracked_file(watcher->keeper, base_path);
 		}
 		file_watcher_monitor_add(file, commit_changes, watcher);
-		watcher->file_names = g_list_prepend(watcher->file_names,
+		watcher->file_paths = g_list_prepend(watcher->file_paths,
 			g_strdup(base_path));
 	}
 exit:
@@ -308,7 +308,7 @@ GList *
 file_watcher_get_monitored_files(FileWatcher *watcher)
 {
 	g_return_val_if_fail(watcher, NULL);
-	return g_list_copy(watcher->file_names);
+	return g_list_copy(watcher->file_paths);
 }
 
 gboolean
