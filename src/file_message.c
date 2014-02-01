@@ -228,6 +228,7 @@ file_msg_to_string(FileMsg *self)
 			"<timestamp>%"G_GINT64_FORMAT"</timestamp>",
 			self->priv->timestamp);
 	}
+	g_string_append(str, "\n");
 	return g_string_free(str, FALSE);
 }
 

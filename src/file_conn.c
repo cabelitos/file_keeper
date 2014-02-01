@@ -62,6 +62,8 @@ file_conn_send_msg(FileConn *self, FileMsg *msg)
 	status = g_io_channel_write_chars(self->priv->channel,
 		str, -1, NULL, NULL);
 
+	g_io_channel_flush(self->priv->channel, NULL);
+
 	printf("Message: %s sent to client\n", str);
 	g_free(str);
 
