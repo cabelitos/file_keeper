@@ -312,6 +312,17 @@ file_watcher_get_monitored_files(FileWatcher *watcher)
 }
 
 gboolean
+file_watcher_monitored_file_check(FileWatcher *watcher, const char *str)
+{
+	GList *itr;
+	for (itr = watcher->file_paths; itr; itr = itr->next) {
+		if (!strcmp(itr->data, str))
+			return TRUE;
+	}
+	return FALSE;
+}
+
+gboolean
 file_watcher_request_revert_file(FileWatcher *watcher, const char *path,
 	gint64 timestamp)
 {
@@ -321,6 +332,9 @@ file_watcher_request_revert_file(FileWatcher *watcher, const char *path,
 
 	g_return_val_if_fail(watcher, FALSE);
 	g_return_val_if_fail(path, FALSE);
+
+	if (!file_watcher_monitored_file_check(watcher, path))
+		return FALSE;
 
 	file = g_file_new_for_path(path);
 	hash = g_file_hash(file);
@@ -348,6 +362,9 @@ file_watcher_request_revert_end(FileWatcher *watcher, const char *path, gboolean
 	g_return_val_if_fail(watcher, FALSE);
 	g_return_val_if_fail(path, FALSE);
 
+	if (!file_watcher_monitored_file_check(watcher, path))
+		return FALSE;
+
 	r = file_keeper_reset_file(watcher->keeper, path, toHead);
 
 	if (r) {
@@ -363,6 +380,9 @@ file_watcher_request_file_versions(FileWatcher *watcher, const char *path)
 {
 	g_return_val_if_fail(watcher, NULL);
 	g_return_val_if_fail(path, NULL);
+
+	if (!file_watcher_monitored_file_check(watcher, path))
+		return FALSE;
 
 	return file_keeper_get_file_commits(watcher->keeper, path);
 }
