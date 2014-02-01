@@ -30,7 +30,8 @@ struct _FileConnClass
 
 
   void     (* client_connected) (FileConn      *conn);
-  void     (*client_request) (FileConn *conn, FileMsg *msg);
+  void     (* client_request) (FileConn *conn, FileMsg *msg);
+  void     (* client_disconnected) (FileConn      *conn);
 };
 
 FileConn *file_conn_new(void);

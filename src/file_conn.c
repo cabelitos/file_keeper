@@ -13,6 +13,7 @@ struct _FileConnPrivate {
 enum {
 	CLIENT_CONNECTED,
 	CLIENT_REQUEST,
+	CLIENT_DISCONNECTED,
 	LAST_SIGNAL
 };
 
@@ -36,6 +37,7 @@ file_conn_can_read(GIOChannel *source, GIOCondition cond,
 		g_object_unref(self->priv->connection);
 		self->priv->connection = NULL;
 		r = FALSE;
+		g_signal_emit(self, signals[CLIENT_DISCONNECTED], 0);
 		g_socket_service_start(self->priv->service);
 		self->priv->watch_id = 0;
 	} else {
@@ -145,6 +147,15 @@ file_conn_class_init(FileConnClass *klass)
 		  NULL, NULL,
 		  NULL,
 		  G_TYPE_NONE, 1, G_TYPE_FILE_MSG);
+
+	signals[CLIENT_DISCONNECTED] =
+		g_signal_new ("client_disconnected",
+		  G_TYPE_FILE_CONN,
+		  G_SIGNAL_RUN_LAST,
+		  G_STRUCT_OFFSET (FileConnClass, client_disconnected),
+		  NULL, NULL,
+		  NULL,
+		  G_TYPE_NONE, 0, NULL);
 }
 
 static void

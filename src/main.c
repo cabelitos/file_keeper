@@ -5,6 +5,11 @@
 #include "file_conn.h"
 #include "file_message.h"
 
+typedef struct _WatherContext {
+	char *last_file;
+	FileWatcher *watcher;
+} WatherContext;
+
 static void
 client_connected(FileConn *conn, gpointer data)
 {
@@ -45,22 +50,48 @@ handle_file_versions_request(FileWatcher *watcher, FileConn *conn,
 }
 
 static void
+watcher_ctx_last_file_replace(WatherContext *ctx, const char *str)
+{
+	g_free(ctx->last_file);
+	ctx->last_file = g_strdup(str);
+}
+
+static void
 client_request(FileConn *conn, FileMsg *msg, gpointer data)
 {
+	WatherContext *ctx = data;
 	File_Message_Operation op = file_msg_get_operation_type(msg);
 	if (op == FILE_MESSAGE_INVALID_TYPE)
 		printf("Invalid message!\n");
 	else if (op == FILE_MESSSAGE_VERSIONS)
-		handle_file_versions_request(data, conn, file_msg_get_file_path(msg));
-	else if (op == FILE_MESSAGE_REVERT)
-		file_watcher_request_revert_file(data, file_msg_get_file_path(msg),
-			file_msg_get_timestamp(msg));
-	else if (op == FILE_MESSAGE_REVERT_ABORT)
-		file_watcher_request_revert_end(data, file_msg_get_file_path(msg), TRUE);
-	else if (op == FILE_MESSAGE_REVERT_CONFIRM)
-		file_watcher_request_revert_end(data, file_msg_get_file_path(msg), FALSE);
-	else
+		handle_file_versions_request(ctx->watcher, conn,
+			file_msg_get_file_path(msg));
+	else if (op == FILE_MESSAGE_REVERT) {
+		file_watcher_request_revert_file(ctx->watcher,
+			file_msg_get_file_path(msg), file_msg_get_timestamp(msg));
+		watcher_ctx_last_file_replace(ctx, file_msg_get_file_path(msg));
+	} else if (op == FILE_MESSAGE_REVERT_ABORT) {
+		file_watcher_request_revert_end(ctx->watcher,
+			file_msg_get_file_path(msg), TRUE);
+		watcher_ctx_last_file_replace(ctx, NULL);
+	 } else if (op == FILE_MESSAGE_REVERT_CONFIRM) {
+		file_watcher_request_revert_end(ctx->watcher,
+			file_msg_get_file_path(msg), FALSE);
+		watcher_ctx_last_file_replace(ctx, NULL);
+	} else
 		printf("We are not supposed to handle the op: %d\n", (int) op);
+}
+
+static void
+client_disconnected(FileConn *conn, void *data)
+{
+	WatherContext *ctx = data;
+
+	if (!ctx->last_file)
+		return;
+
+	file_watcher_request_revert_end(ctx->watcher, ctx->last_file, TRUE);
+	watcher_ctx_last_file_replace(ctx, NULL);
 }
 
 int
@@ -69,6 +100,7 @@ main(int argc, char **argv)
 	GMainLoop *loop;
 	FileWatcher *watcher;
 	FileConn *conn;
+	WatherContext ctx;
 
 	(void) argc;
 	(void) argv;
@@ -78,12 +110,16 @@ main(int argc, char **argv)
 	if (!watcher)
 		return -1;
 
+	ctx.watcher = watcher;
+	ctx.last_file = NULL;
 	conn = file_conn_new();
 
 	g_signal_connect(conn, "client_connected",
 		G_CALLBACK(client_connected), watcher);
 	g_signal_connect(conn, "client_request",
-		G_CALLBACK(client_request), watcher);
+		G_CALLBACK(client_request), &ctx);
+	g_signal_connect(conn, "client_disconnected",
+		G_CALLBACK(client_disconnected), &ctx);
 
 	file_conn_start_listen(conn, 8001);
 
@@ -97,6 +133,7 @@ main(int argc, char **argv)
 	file_watcher_free(watcher);
 	g_object_unref(conn);
 	git_threads_shutdown();
+	g_free(ctx.last_file);
 
 	return 0;
 }
