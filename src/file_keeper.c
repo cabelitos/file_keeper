@@ -31,41 +31,53 @@ file_keeper_create_commit(git_repository *repo, const char *path,
 	git_tree *tree;
 	git_reference *head = NULL;
 	unsigned int parents = 0;
+	gboolean r = FALSE;
         
 	if (git_signature_now(&sig, g_get_user_name(), g_get_host_name()) < 0)
-		return FALSE;
+		return r;
+
 	if (git_repository_index(&index, repo) < 0)
-		return FALSE;
+		goto sig_free;
+
 	if (deleting) {
 		if (git_index_remove_bypath(index, path) < 0)
-			return FALSE;
+			goto index_free;
 	} else {
 		if (git_index_add_bypath(index, path) < 0)
-			return FALSE;
+			goto index_free;
 	}
 	if (git_index_write(index) < 0)
-		return FALSE;
+		goto index_free;
+
 	if (!git_repository_head(&head, repo)) {
 		if (git_commit_lookup(&commit, repo, git_reference_target(head)) < 0 )
-			return FALSE;
+			goto head_free;
 		parents = 1;
 	}
 
 	if (git_index_write_tree(&tree_id, index) < 0)
-		return FALSE;
+		goto commit_free;
+
 	if (git_tree_lookup(&tree, repo, &tree_id) < 0)
-		return FALSE;
+		goto tree_free;
+
 	if (git_commit_create_v(&commit_id, repo, "HEAD", sig, sig,
-		NULL, msg, tree, parents, commit) < 0)
-		return FALSE;
+		NULL, msg, tree, parents, commit) == 0)
+		r = TRUE;
+
+tree_free:
+	git_tree_free(tree);
+commit_free:
 	if (commit)
 		git_commit_free(commit);
+head_free:
 	if (head)
 		git_reference_free(head);
+index_free:
 	git_index_free(index);
-	git_tree_free(tree);
+sig_free:
 	git_signature_free(sig);
-	return TRUE;
+	return r;
 }
 
 static void
