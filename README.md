@@ -53,7 +53,6 @@ TODO
 -------
 
 * Create a GUI application.
-* Transform file_watcher.c in a class.
 * Test on Windows
 
 

@@ -95,6 +95,24 @@ client_disconnected(FileConn *conn, void *data)
 	watcher_ctx_last_file_replace(ctx, NULL);
 }
 
+static void
+watcher_changed(FileWatcher *watcher, File_Watcher_Changed_Type type,
+	const char *path, void *data)
+{
+	FileMsg *msg = file_msg_new();
+
+	file_msg_set_file_path(msg, path);
+
+	if (type == FILE_DELETED)
+		file_msg_set_operation(msg, FILE_MESSAGE_DELETED);
+	else
+		file_msg_set_operation(msg, FILE_MESSAGE_NEW);
+
+	file_conn_send_msg(data, msg);
+	g_object_unref(msg);
+	(void)watcher;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -121,6 +139,9 @@ main(int argc, char **argv)
 		G_CALLBACK(client_request), &ctx);
 	g_signal_connect(conn, "client_disconnected",
 		G_CALLBACK(client_disconnected), &ctx);
+
+	file_watcher_set_file_watcher_changed_cb(watcher, watcher_changed,
+		conn);
 
 	file_conn_start_listen(conn, 8001);
 

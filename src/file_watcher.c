@@ -22,6 +22,8 @@ struct _FileWatcher {
 	FileKeeper *keeper;
 	GHashTable *file_monitors;
 	GList *file_paths; /* It stored only the files that we monitor (excludes directories) */
+	file_watcher_changed_cb cb_changed;
+	void *cb_data;
 };
 
 static void file_watcher_add_watches(const char *base_path, gboolean commit_changes,
@@ -167,6 +169,15 @@ file_watcher_remove_from_file_paths_list(FileWatcher *watcher,
 }
 
 static void
+file_watcher_call_changed_cb(FileWatcher *watcher,
+	File_Watcher_Changed_Type type, const char *path)
+{
+	if (!watcher->cb_changed)
+		return;
+	(watcher->cb_changed)(watcher, type, path, watcher->cb_data);
+}
+
+static void
 file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 	GFile *other, GFileMonitorEvent event, gpointer data)
 {
@@ -202,8 +213,12 @@ file_watcher_monitor_changed(GFileMonitor *monitor, GFile *file,
 		deleting = file_watcher_file_really_deleted(path, watcher);
 		if (!deleting)
 			file_keeper_recreate_file_link(watcher->keeper, path);
-	} else if (event == G_FILE_MONITOR_EVENT_CREATED)
+		else
+			file_watcher_call_changed_cb(watcher, FILE_DELETED, path);
+	} else if (event == G_FILE_MONITOR_EVENT_CREATED) {
 			file_watcher_add_watches(path, FALSE, watcher);
+			file_watcher_call_changed_cb(watcher, FILE_ADDED, path);
+	}
 
 	/* We cannot track directories, only the files in it. */
 	if (type == G_FILE_TYPE_DIRECTORY) {
@@ -373,6 +388,16 @@ file_watcher_request_revert_end(FileWatcher *watcher, const char *path, gboolean
 		g_object_unref(file);
 	}
 	return r;
+}
+
+void
+file_watcher_set_file_watcher_changed_cb(FileWatcher *watcher,
+	file_watcher_changed_cb cb, void *cb_data)
+{
+	g_return_if_fail(watcher);
+
+	watcher->cb_changed = cb;
+	watcher->cb_data = cb_data;
 }
 
 GList *

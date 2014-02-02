@@ -5,6 +5,17 @@
 
 typedef struct _FileWatcher FileWatcher;
 
+typedef enum _File_Watcher_Changed_Type {
+	FILE_ADDED,
+	FILE_DELETED
+} File_Watcher_Changed_Type;
+
+typedef void (*file_watcher_changed_cb)(FileWatcher *watcher,
+	File_Watcher_Changed_Type type, const char *path, void *data);
+
+void file_watcher_set_file_watcher_changed_cb(FileWatcher *watcher,
+	file_watcher_changed_cb cb, void *cb_data);
+
 FileWatcher *file_watcher_new(void);
 
 GList *file_watcher_get_monitored_files(FileWatcher *watcher);
