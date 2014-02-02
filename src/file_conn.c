@@ -37,6 +37,8 @@ file_conn_can_read(GIOChannel *source, GIOCondition cond,
 		g_object_unref(self->priv->connection);
 		self->priv->connection = NULL;
 		r = FALSE;
+		g_io_channel_unref(self->priv->channel);
+		self->priv->channel = NULL;
 		g_signal_emit(self, signals[CLIENT_DISCONNECTED], 0);
 		g_socket_service_start(self->priv->service);
 		self->priv->watch_id = 0;
@@ -56,6 +58,9 @@ file_conn_send_msg(FileConn *self, FileMsg *msg)
 	char *str;
 	g_return_val_if_fail(self, FALSE);
 	g_return_val_if_fail(msg, FALSE);
+
+	if (!self->priv->channel)
+		return FALSE;
 
 	str = file_msg_to_string(msg);
 
