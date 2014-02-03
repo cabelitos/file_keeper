@@ -481,8 +481,6 @@ file_keeper_reset_file(FileKeeper *keeper, const char *path, gboolean toHead)
 			goto err_repo;
 
 		git_oid_tostr(buf, sizeof(buf), git_commit_id(keeper->commit));
-		git_commit_free(keeper->commit);
-		keeper->commit = NULL;
 	}
 
 	if (git_revparse_single(&obj, repo, buf) < 0)
@@ -490,6 +488,11 @@ file_keeper_reset_file(FileKeeper *keeper, const char *path, gboolean toHead)
 
 	if (git_reset(repo, obj, GIT_RESET_HARD))
 		goto err_reset;
+
+	if (keeper->commit) {
+		git_commit_free(keeper->commit);
+		keeper->commit = NULL;
+	}
 
 	r = file_keeper_recreate_client_file(path, final_path);
 err_reset:
