@@ -29,6 +29,7 @@ file_msg_operation_emum_get_type(void)
 			{ FILE_MESSAGE_NEW, "FILE_MESSAGE_NEW", "A new file" },
 			{ FILE_MESSAGE_DELETED, "FILE_MESSAGE_DELETED", "A deleted file" },
 			{ FILE_MESSAGE_VERSION, "FILE_MESSAGE_VERSION", "New file version" },
+			{ FILE_MESSAGE_ROOT_PATH, "FILE_MESSAGE_ROOT_PATH", "The file keeper root dir" },
 			{ FILE_MESSAGE_REVERT, "FILE_MESSAGE_REVERT", "Revert a file for preview" },
 			{ FILE_MESSAGE_REVERT_ABORT, "FILE_MESSAGE_REVERT_ABORT",
 				"Abort the revert process" },

@@ -18,7 +18,7 @@ void file_watcher_set_file_watcher_changed_cb(FileWatcher *watcher,
 
 FileWatcher *file_watcher_new(void);
 
-GList *file_watcher_get_monitored_files(FileWatcher *watcher);
+const char *file_watcher_get_root_path(FileWatcher *watcher);
 
 GList *file_watcher_request_file_versions(FileWatcher *watcher, const char *path);
 

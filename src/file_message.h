@@ -12,6 +12,7 @@ typedef enum _File_Message_Operation {
 	FILE_MESSAGE_NEW, /* A new file to show in the GUI */
 	FILE_MESSAGE_DELETED, /* A file was deleted */
 	FILE_MESSAGE_VERSION, /* A  file commit */
+	FILE_MESSAGE_ROOT_PATH, /* The file keeper root dir */
 
 	/* Client to server */
 	FILE_MESSAGE_REVERT, /* Request a file revert */

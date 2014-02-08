@@ -23,6 +23,7 @@ struct _FileWatcher {
 	GHashTable *file_monitors;
 	GList *file_paths; /* It stored only the files that we monitor (excludes directories) */
 	file_watcher_changed_cb cb_changed;
+	char *root_path;
 	void *cb_data;
 };
 
@@ -95,6 +96,7 @@ file_watcher_new(void)
 		g_direct_equal, NULL, file_watcher_value_destroy);
 	file_watcher_add_watches(path, TRUE, watcher);
 	file_keeper_commit_deleted_files(watcher->keeper);
+	watcher->root_path = g_strdup(path);
 	return watcher;
 }
 
@@ -109,6 +111,7 @@ file_watcher_free(FileWatcher *watcher)
 		file_watcher_free_changed_info_and_commit);
 	g_list_free_full(watcher->file_paths, file_watcher_file_paths_free);
 	file_keeper_free(watcher->keeper);
+	g_free(watcher->root_path);
 	g_free(watcher);
 }
 
@@ -319,13 +322,6 @@ exit:
 	g_object_unref(file);
 }
 
-GList *
-file_watcher_get_monitored_files(FileWatcher *watcher)
-{
-	g_return_val_if_fail(watcher, NULL);
-	return g_list_copy(watcher->file_paths);
-}
-
 gboolean
 file_watcher_monitored_file_check(FileWatcher *watcher, const char *str)
 {
@@ -398,6 +394,13 @@ file_watcher_set_file_watcher_changed_cb(FileWatcher *watcher,
 
 	watcher->cb_changed = cb;
 	watcher->cb_data = cb_data;
+}
+
+const char *
+file_watcher_get_root_path(FileWatcher *watcher)
+{
+	g_return_val_if_fail(watcher, NULL);
+	return watcher->root_path;
 }
 
 GList *

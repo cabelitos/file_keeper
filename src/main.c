@@ -14,17 +14,15 @@ static void
 client_connected(FileConn *conn, gpointer data)
 {
 	FileMsg *msg;
-	GList *files = file_watcher_get_monitored_files(data);
-	GList *itr;
+	const char *path = file_watcher_get_root_path(data);
 
-	for (itr = files; itr; itr = itr->next) {
-		msg = file_msg_from_operation_and_file_path_new(FILE_MESSAGE_NEW,
-			itr->data);
-		if (!file_conn_send_msg(conn, msg))
-			printf("Could not send message to the client!\n");
-		g_object_unref(msg);
-	}
-	g_list_free(files);
+	msg = file_msg_from_operation_and_file_path_new(FILE_MESSAGE_ROOT_PATH,
+		path);
+
+	if (!file_conn_send_msg(conn, msg))
+		printf("Could not send message to the client!\n");
+
+	g_object_unref(msg);
 }
 
 static void
