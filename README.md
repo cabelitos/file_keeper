@@ -16,6 +16,8 @@ What I need to compile it?
 1. CMake (version 2.8 or above)
 2. glib 2.0
 3. libgit2
+4. python (For the client App)
+5. WxWidgets with python bindings (For the client App)
 
 But I hate dependencies, shortcuts please!
 --------------------------
@@ -28,7 +30,7 @@ sudo yum install cmake libgit2-devel glib-devel
 
 Mac OS  ( Install homebrew if neeed):
 ```shell
-brew install glib libgit2 cmake
+brew install glib libgit2 cmake wxwidgets
 ```
 
 Windows:
@@ -51,8 +53,6 @@ make
 
 TODO
 -------
-
-* Create a GUI application.
 * Test on Windows
 
 
