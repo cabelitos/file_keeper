@@ -138,6 +138,10 @@ class FileKeeperMainWindow(wx.Frame):
 		FileMessage(command=command,file=self.currentFile, timestamp=itemStr))
 		if (command == FILE_MESSAGE_REVERT):
 			self.OpenProgram(self.currentFile)
+		else:
+			self.versionList.Clear()
+			self.socketWatcher.SendCommand(
+			FileMessage(command=FILE_MESSSAGE_VERSIONS,file=self.currentFile))
 
 	def OnPreviewClicked(self, evt):
 		self.RevertToSelectedVersion(False)
